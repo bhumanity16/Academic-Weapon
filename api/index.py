@@ -8,8 +8,7 @@ from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-# FIX VERCEL PROXY TRAP: Disable oauthlib HTTPS requirement validation unconditionally 
-# This prevents 500 errors caused by secure reverse-proxies handling TLS termination.
+# FIX VERCEL PROXY TRAP: Disable oauthlib HTTPS validation guardrails globally
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # Ensuring relative system paths match perfectly during Vercel's serverless compilation
@@ -23,7 +22,7 @@ template_dir = os.path.join(base_dir, '..', 'templates')
 app = Flask(__name__, template_folder=template_dir)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "scholarsync-secure-session-key-fallback")
 
-# Apply ProxyFix middleware so Flask correctly parses HTTPS headers from Vercel routers
+# Instruct Flask to trust proxy headers sent by Vercel routers
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Dynamic inline scopes configuration mapping
@@ -35,6 +34,19 @@ SCOPES = [
 ]
 
 def get_google_auth_flow():
+    # DYNAMIC REDIRECT RESOLUTION: Detect the exact current deployment URL automatically
+    try:
+        dynamic_fallback = url_for('callback', _external=True)
+    except Exception:
+        dynamic_fallback = "http://localhost:5000/callback"
+
+    # Read from environment variables if set, otherwise use the dynamically generated current domain context
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", dynamic_fallback)
+
+    # Force HTTPS schema when running under serverless deployment scopes
+    if os.getenv("VERCEL") and redirect_uri.startswith("http://"):
+        redirect_uri = redirect_uri.replace("http://", "https://")
+
     client_config = {
         "web": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -43,13 +55,13 @@ def get_google_auth_flow():
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
-            "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/callback")]
+            "redirect_uris": [redirect_uri]
         }
     }
     return Flow.from_client_config(
         client_config,
         scopes=SCOPES,
-        redirect_uri=os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/callback")
+        redirect_uri=redirect_uri
     )
 
 def create_calendar_event(credentials_dict, mode, user_input, ai_response):
@@ -117,9 +129,9 @@ def login():
         return redirect(authorization_url)
     except Exception as e:
         return jsonify({
-            "error": "Failed to initiate Google OAuth login flow",
+            "error": "Failed to initiate Google OAuth configuration flow",
             "details": str(e),
-            "hint": "Check that GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are fully propagated on Vercel."
+            "hint": "Check that GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are explicitly configured in Vercel settings."
         }), 500
 
 @app.route('/callback')
@@ -127,7 +139,6 @@ def callback():
     try:
         flow = get_google_auth_flow()
 
-        # Extra safety check: Enforce HTTPS scheme string on incoming response url contexts
         authorization_response = request.url
         if "http://" in authorization_response and os.getenv("VERCEL"):
             authorization_response = authorization_response.replace("http://", "https://")
@@ -157,9 +168,9 @@ def callback():
         
     except Exception as e:
         return jsonify({
-            "error": "OAuth Callback Token Validation Failed",
+            "error": "OAuth Callback Token Exchange Denied",
             "details": str(e),
-            "hint": "Verify your GOOGLE_REDIRECT_URI exactly matches the Authorization Redirect URI saved in Google Cloud Console."
+            "hint": "Verify that your Google Cloud Console contains the exact callback URL structure."
         }), 500
 
 @app.route('/logout')
