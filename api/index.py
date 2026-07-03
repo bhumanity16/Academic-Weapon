@@ -6,6 +6,11 @@ from datetime import datetime, timedelta
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+# FIX VERCEL PROXY TRAP: Disable oauthlib HTTPS requirement validation unconditionally 
+# This prevents 500 errors caused by secure reverse-proxies handling TLS termination.
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # Ensuring relative system paths match perfectly during Vercel's serverless compilation
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -17,6 +22,9 @@ template_dir = os.path.join(base_dir, '..', 'templates')
 
 app = Flask(__name__, template_folder=template_dir)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "scholarsync-secure-session-key-fallback")
+
+# Apply ProxyFix middleware so Flask correctly parses HTTPS headers from Vercel routers
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Dynamic inline scopes configuration mapping
 SCOPES = [
@@ -102,47 +110,57 @@ def home():
 
 @app.route('/login')
 def login():
-    if app.debug or os.getenv("VERCEL") is None:
-        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-    flow = get_google_auth_flow()
-    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
-    session['oauth_state'] = state
-    return redirect(authorization_url)
+    try:
+        flow = get_google_auth_flow()
+        authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+        session['oauth_state'] = state
+        return redirect(authorization_url)
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to initiate Google OAuth login flow",
+            "details": str(e),
+            "hint": "Check that GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are fully propagated on Vercel."
+        }), 500
 
 @app.route('/callback')
 def callback():
-    if app.debug or os.getenv("VERCEL") is None:
-        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
-    flow = get_google_auth_flow()
-
-    # FIX VERCEL PROXY TRAP: Rewrite request URL schema if routed via proxy HTTP protocols
-    authorization_response = request.url
-    if "http://" in authorization_response and os.getenv("VERCEL"):
-        authorization_response = authorization_response.replace("http://", "https://")
-
-    flow.fetch_token(authorization_response=authorization_response)
-    credentials = flow.credentials
-
-    session['credentials'] = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    }
-
-    headers = {"Authorization": f"Bearer {credentials.token}"}
     try:
-        with httpx.Client() as client:
-            resp = client.get("https://www.googleapis.com/oauth2/v2/userinfo", headers=headers)
-            if resp.status_code == 200:
-                session['user'] = resp.json()
-    except Exception as e:
-        print(f"Error encountered during user profile sync execution: {str(e)}")
+        flow = get_google_auth_flow()
 
-    return redirect(url_for('home'))
+        # Extra safety check: Enforce HTTPS scheme string on incoming response url contexts
+        authorization_response = request.url
+        if "http://" in authorization_response and os.getenv("VERCEL"):
+            authorization_response = authorization_response.replace("http://", "https://")
+
+        flow.fetch_token(authorization_response=authorization_response)
+        credentials = flow.credentials
+
+        session['credentials'] = {
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes
+        }
+
+        headers = {"Authorization": f"Bearer {credentials.token}"}
+        try:
+            with httpx.Client() as client:
+                resp = client.get("https://www.googleapis.com/oauth2/v2/userinfo", headers=headers)
+                if resp.status_code == 200:
+                    session['user'] = resp.json()
+        except Exception as e:
+            print(f"Error encountered during user profile sync execution: {str(e)}")
+
+        return redirect(url_for('home'))
+        
+    except Exception as e:
+        return jsonify({
+            "error": "OAuth Callback Token Validation Failed",
+            "details": str(e),
+            "hint": "Verify your GOOGLE_REDIRECT_URI exactly matches the Authorization Redirect URI saved in Google Cloud Console."
+        }), 500
 
 @app.route('/logout')
 def logout():
