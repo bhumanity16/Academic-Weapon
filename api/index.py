@@ -184,4 +184,4 @@ def sync_calendar():
         return jsonify({"success": False, "error": "Internal synchronization error or schema verification failure."})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=3213)
+    app.run(debug=True)
