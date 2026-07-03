@@ -22,7 +22,7 @@ template_dir = os.path.join(base_dir, '..', 'templates')
 app = Flask(__name__, template_folder=template_dir)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "scholarsync-secure-session-key-fallback")
 
-# Instruct Flask to trust proxy headers sent by Vercel routers
+# Instruct Flask to trust proxy headers sent by Vercel routers (Crucial for detecting current domain)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Dynamic inline scopes configuration mapping
@@ -34,18 +34,15 @@ SCOPES = [
 ]
 
 def get_google_auth_flow():
-    # DYNAMIC REDIRECT RESOLUTION: Detect the exact current deployment URL automatically
-    try:
-        dynamic_fallback = url_for('callback', _external=True)
-    except Exception:
-        dynamic_fallback = "http://localhost:5000/callback"
-
-    # Read from environment variables if set, otherwise use the dynamically generated current domain context
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", dynamic_fallback)
-
-    # Force HTTPS schema when running under serverless deployment scopes
-    if os.getenv("VERCEL") and redirect_uri.startswith("http://"):
-        redirect_uri = redirect_uri.replace("http://", "https://")
+    # AUTOMATIC DYNAMIC DETECTION: Read the current exact domain name the user is visiting
+    host_url = request.host_url
+    
+    # Enforce secure HTTPS schema if running inside Vercel's cloud infrastructure
+    if os.getenv("VERCEL") and host_url.startswith("http://"):
+        host_url = host_url.replace("http://", "https://")
+        
+    # Standardize the exact callback URI structure dynamically
+    redirect_uri = host_url.rstrip('/') + '/callback'
 
     client_config = {
         "web": {
@@ -170,7 +167,7 @@ def callback():
         return jsonify({
             "error": "OAuth Callback Token Exchange Denied",
             "details": str(e),
-            "hint": "Verify that your Google Cloud Console contains the exact callback URL structure."
+            "hint": "Ensure the exact address in your browser bar right now (with /callback added) is in Google Cloud Console."
         }), 500
 
 @app.route('/logout')
