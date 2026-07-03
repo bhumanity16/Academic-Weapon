@@ -72,7 +72,6 @@ def create_calendar_event(credentials_dict, mode, user_input, ai_response):
         if not event_date:
             event_date = datetime.now().strftime("%Y-%m-%d")
 
-        # Google Calendar requires an exclusive end-date string parameters for all-day markers
         try:
             dt = datetime.strptime(event_date, "%Y-%m-%d")
             end_dt = dt + timedelta(days=1)
@@ -80,7 +79,6 @@ def create_calendar_event(credentials_dict, mode, user_input, ai_response):
         except Exception:
             end_date_str = event_date
 
-        # FIX: Removed 'timeZone' parameter entirely to prevent Google API parsing rejection on 'date' parameters
         event = {
             'summary': summary,
             'description': ai_response,
@@ -115,8 +113,15 @@ def login():
 def callback():
     if app.debug or os.getenv("VERCEL") is None:
         os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
     flow = get_google_auth_flow()
-    flow.fetch_token(authorization_response=request.url)
+
+    # FIX VERCEL PROXY TRAP: Rewrite request URL schema if routed via proxy HTTP protocols
+    authorization_response = request.url
+    if "http://" in authorization_response and os.getenv("VERCEL"):
+        authorization_response = authorization_response.replace("http://", "https://")
+
+    flow.fetch_token(authorization_response=authorization_response)
     credentials = flow.credentials
 
     session['credentials'] = {
