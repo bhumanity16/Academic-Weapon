@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScholarSync AI — High School Productivity Suite</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Play CDN is fine for a prototype; build Tailwind with its CLI for production -->
+    <script src="https://cdn.tailwindcss.com/3.4.5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,20 +15,26 @@
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        .glow-effect {
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: none; }
         }
-        .glow-effect:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px -15px rgba(34, 211, 238, 0.15);
-        }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+
         /* Custom Scrollbar Styles */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #09090b; }
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-        /* ADVANCED MARKDOWN SCHEDULE BLOCK CARD INTERFACE OVERRIDES */
+        /* Markdown plan styling: each "### Day" heading becomes a card header */
+        .markdown-content h1, .markdown-content h2 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #f4f4f5;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
         .markdown-content h3 {
             font-size: 1.15rem;
             font-weight: 800;
@@ -37,10 +45,12 @@
             padding: 0.75rem 1rem;
             border-radius: 0.75rem;
             border-left: 4px solid #22d3ee;
-            display: block;
             letter-spacing: -0.025em;
         }
-        .markdown-content h3 + ul {
+        .markdown-content h4 { font-weight: 700; color: #e4e4e7; margin: 1.25rem 0 0.5rem; }
+        .markdown-content ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+        .markdown-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+        .markdown-content h3 + ul, .markdown-content h3 + ol {
             background-color: rgba(24, 24, 27, 0.4);
             border: 1px solid #27272a;
             border-radius: 1rem;
@@ -53,58 +63,56 @@
             color: #e4e4e7;
             line-height: 1.6;
         }
-        .markdown-content li:last-child {
-            margin-bottom: 0;
-        }
-        .markdown-content strong {
-            color: #f4f4f5;
-            font-weight: 600;
-        }
+        .markdown-content li:last-child { margin-bottom: 0; }
+        .markdown-content strong { color: #f4f4f5; font-weight: 600; }
         .markdown-content p { margin-bottom: 1rem; color: #d4d4d8; line-height: 1.75; }
+        .markdown-content a { color: #22d3ee; text-decoration: underline; }
+        .markdown-content table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; font-size: 0.875rem; }
+        .markdown-content th, .markdown-content td { border: 1px solid #27272a; padding: 0.5rem 0.75rem; text-align: left; }
+        .markdown-content th { background: #18181b; color: #f4f4f5; }
 
-        /* Force native browser calendar selectors to retain legible high-contrast UI visibility specs */
+        /* Keep the native date picker icon visible on the dark background */
+        input[type="date"] { color-scheme: dark; }
         input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(1) brightness(0.9);
             cursor: pointer;
             opacity: 0.75;
-            transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+            transition: opacity 0.15s ease-in-out;
             padding: 4px;
             border-radius: 6px;
         }
         input[type="date"]::-webkit-calendar-picker-indicator:hover {
             opacity: 1;
             background-color: rgba(255, 255, 255, 0.1);
-            transform: scale(1.05);
         }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-50 min-h-screen selection:bg-cyan-500/30 selection:text-cyan-200 antialiased flex">
 
-    <div id="sync-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div id="sync-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title">
         <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl max-w-md w-full mx-4 space-y-6 shadow-2xl animate-fade-in">
             <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20 text-lg">
+                <div class="h-10 w-10 shrink-0 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20 text-lg">
                     📅
                 </div>
                 <div>
-                    <h4 class="text-base font-bold text-zinc-100">Export to Google Calendar?</h4>
-                    <p class="text-xs text-zinc-400 mt-0.5">Would you like to auto-populate your Google Calendar layout and block out this optimized timeline now?</p>
+                    <h4 id="sync-modal-title" class="text-base font-bold text-zinc-100">Add to Google Calendar?</h4>
+                    <p class="text-xs text-zinc-400 mt-0.5">We'll create one all-day event with this plan in its description. Nothing else in your calendar is touched.</p>
                 </div>
             </div>
             <div class="flex items-center gap-3 justify-end pt-2">
-                <button onclick="dismissSyncModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition">
+                <button type="button" onclick="dismissSyncModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition">
                     Keep Only Here
                 </button>
-                <button onclick="confirmCalendarSync()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl transition shadow-lg shadow-cyan-500/10">
+                <button type="button" id="sync-confirm-btn" onclick="confirmCalendarSync()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl transition shadow-lg shadow-cyan-500/10">
                     Sync to My Calendar
                 </button>
             </div>
         </div>
     </div>
 
-    <aside class="w-72 bg-zinc-900 border-r border-zinc-800/80 p-6 flex flex-col justify-between fixed h-full z-30 hidden md:flex">
+    <aside class="w-72 bg-zinc-900 border-r border-zinc-800/80 p-6 flex-col justify-between fixed h-full z-30 hidden md:flex">
         <div class="space-y-8">
-            <div class="flex items-center gap-3 px-2 cursor-pointer" onclick="navigateToHome()">
+            <button type="button" class="flex items-center gap-3 px-2 text-left" onclick="navigateToHome()">
                 <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                     <span class="text-white font-black text-sm">S</span>
                 </div>
@@ -112,47 +120,47 @@
                     <span class="font-bold text-base tracking-tight block">ScholarSync AI</span>
                     <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Academic Engine</span>
                 </div>
-            </div>
+            </button>
 
             <div class="bg-zinc-950/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 shadow-inner">
                 <div class="flex items-center justify-between">
                     <span class="text-xs text-zinc-400 font-medium">Current Streak</span>
-                    <span id="stat-streak" class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md">1 Day</span>
+                    <span id="stat-streak" class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md">0 Days</span>
                 </div>
                 <div class="h-px bg-zinc-800/60"></div>
                 <div class="flex items-center justify-between">
-                    <span class="text-xs text-zinc-400 font-medium">Sync Progress</span>
-                    <span id="stat-points" class="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">100 XP</span>
+                    <span class="text-xs text-zinc-400 font-medium">Plans Created</span>
+                    <span id="stat-points" class="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">0 XP</span>
                 </div>
             </div>
 
             <div class="space-y-4">
                 <div class="space-y-1">
                     <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2 block mb-2">Navigation</span>
-                    <button onclick="navigateToHome()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
+                    <button type="button" onclick="navigateToHome()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
                         Home Overview
                     </button>
-                    <button onclick="navigateToDemo()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
+                    <button type="button" onclick="navigateToDemo()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
                         Launch Workspace
                     </button>
                 </div>
 
                 <div class="space-y-1.5 relative">
-                    <label class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2 block">Quick-Jump Engine Selector</label>
-                    <div class="relative">
-                        <button onclick="toggleSidebarDropdown()" id="dropdown-trigger-btn" class="w-full flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-semibold text-zinc-200 hover:border-zinc-700 transition">
-                            <span id="dropdown-active-label">Select Feature Engine</span>
+                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2 block">Quick-Jump Engine Selector</span>
+                    <div id="dropdown-wrapper" class="relative">
+                        <button type="button" onclick="toggleSidebarDropdown()" id="dropdown-trigger-btn" aria-haspopup="true" aria-expanded="false" class="w-full flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-semibold text-zinc-200 hover:border-zinc-700 transition">
+                            <span id="dropdown-active-label">Study Planner</span>
                             <span class="text-zinc-500 text-[10px]">▼</span>
                         </button>
 
                         <div id="sidebar-features-dropdown" class="hidden absolute top-full left-0 w-full mt-1.5 bg-zinc-950 border border-zinc-800 rounded-xl p-1.5 shadow-2xl z-40 space-y-1">
-                            <button onclick="selectEngineMode('planner')" id="tab-planner" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
+                            <button type="button" onclick="selectEngineMode('planner')" data-mode-item="planner" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
                                 Study Planner
                             </button>
-                            <button onclick="selectEngineMode('milestone')" id="tab-milestone" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
+                            <button type="button" onclick="selectEngineMode('milestone')" data-mode-item="milestone" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
                                 Milestone Matrix
                             </button>
-                            <button onclick="selectEngineMode('booster')" id="tab-booster" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-amber-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
+                            <button type="button" onclick="selectEngineMode('booster')" data-mode-item="booster" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-amber-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
                                 Daily Booster
                             </button>
                         </div>
@@ -164,39 +172,39 @@
         <div class="border-t border-zinc-800/80 pt-4 px-2">
             <div class="flex items-center gap-2 text-xs text-zinc-500">
                 <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span>Core System Active (v2.2)</span>
+                <span>Core System Active (v2.3)</span>
             </div>
         </div>
     </aside>
 
-    <main class="flex-1 md:ml-72 min-h-screen flex flex-col">
+    <main class="flex-1 md:ml-72 min-h-screen flex flex-col min-w-0">
 
-        <nav class="w-full border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-20 px-6 py-4 flex items-center justify-between">
+        <nav class="w-full border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 py-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-4">
-                <span class="md:hidden text-lg font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 cursor-pointer" onclick="navigateToHome()">ScholarSync</span>
-                <span class="hidden md:inline-block text-xs font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full cursor-pointer hover:bg-zinc-800 transition" onclick="window.location.reload();">
-                    Reset System State
-                </span>
+                <button type="button" class="md:hidden text-lg font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400" onclick="navigateToHome()">ScholarSync</button>
+                <button type="button" class="hidden md:inline-block text-xs font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full hover:bg-zinc-800 transition" onclick="window.location.reload();">
+                    Reset Workspace
+                </button>
             </div>
 
-            <div class="flex items-center gap-4">
-                <button onclick="navigateToDemo()" class="text-xs text-zinc-400 hover:text-zinc-200 font-semibold px-2 py-1.5 transition">
-                    Access Demo Page
+            <div class="flex items-center gap-3 md:gap-4 min-w-0">
+                <button type="button" onclick="navigateToDemo()" class="hidden sm:inline-block text-xs text-zinc-400 hover:text-zinc-200 font-semibold px-2 py-1.5 transition">
+                    Open Workspace
                 </button>
-                <div class="h-4 w-px bg-zinc-800"></div>
+                <div class="hidden sm:block h-4 w-px bg-zinc-800"></div>
 
                 {% if user %}
-                <div class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-full shadow-md">
+                <div class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-full shadow-md min-w-0">
                     {% if user.picture %}
-                    <img src="{{ user.picture }}" alt="Profile" class="h-4 w-4 rounded-full border border-zinc-700">
+                    <img src="{{ user.picture }}" alt="" referrerpolicy="no-referrer" class="h-4 w-4 rounded-full border border-zinc-700">
                     {% endif %}
-                    <span class="text-zinc-200 text-xs font-semibold">{{ user.name or user.email }}</span>
+                    <span class="text-zinc-200 text-xs font-semibold truncate max-w-[10rem]">{{ user.name or user.email or "Signed in" }}</span>
                     <div class="h-3 w-px bg-zinc-800"></div>
-                    <a href="/logout" class="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase tracking-wider">Sign Out</a>
+                    <a href="/logout" class="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase tracking-wider whitespace-nowrap">Sign Out</a>
                 </div>
                 {% else %}
-                <a href="/login" class="flex items-center gap-2.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/80 text-zinc-200 text-xs font-semibold px-4 py-2 rounded-full transition-all shadow-md">
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <a href="/login" class="flex items-center gap-2.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/80 text-zinc-200 text-xs font-semibold px-4 py-2 rounded-full transition-all shadow-md whitespace-nowrap">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
@@ -208,102 +216,112 @@
             </div>
         </nav>
 
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="px-4 md:px-8 pt-6 max-w-4xl w-full mx-auto">
+            {% for message in messages %}
+            <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs rounded-xl font-semibold mb-2">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
         <div class="container mx-auto px-4 md:px-8 py-10 max-w-4xl flex-1 space-y-12">
 
             <div id="view-home" class="space-y-12">
                 <header class="relative space-y-4">
                     <div class="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                        <span>Next-Gen Student Analytics</span>
+                        <span>AI Study Planning for Students</span>
                     </div>
                     <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-[1.1] text-zinc-100">
-                        ScholarSync <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500">is Support</span> For Every Deadline.
+                        ScholarSync: <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500">Support</span> for Every Deadline.
                     </h1>
                     <p class="text-zinc-400 text-base md:text-lg max-w-2xl leading-relaxed">
-                        Crush exam anxiety, coordinate massive project timelines, and partition your daily availability using predictive execution modules centered entirely around personal capability metrics.
+                        Turn exam dates, big projects and today's to-do list into a clear, realistic schedule, then send it to Google Calendar in one click.
                     </p>
                     <div class="pt-2">
-                        <button onclick="navigateToDemo()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-cyan-500/15 transition duration-150">
-                            Launch Free Demo Workspace ➔
+                        <button type="button" onclick="navigateToDemo()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-cyan-500/15 transition duration-150">
+                            Launch Free Workspace ➔
                         </button>
                     </div>
                 </header>
 
                 <section class="border-t border-zinc-900 pt-8 space-y-6">
                     <div class="text-left">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Empirical Metrics</span>
-                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">System Performance Metrics</h2>
+                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Three Engines</span>
+                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">What ScholarSync Can Plan For You</h2>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-zinc-900 border border-zinc-800/60 p-5 rounded-2xl">
-                            <span class="block text-3xl font-extrabold text-cyan-400 tracking-tight">94%</span>
-                            <span class="block text-xs font-semibold text-zinc-200 mt-1">Grade Improvement Index</span>
-                            <span class="block text-xs text-zinc-500 mt-0.5">Average improvement recorded across foundational test items.</span>
-                        </div>
-                        <div class="bg-zinc-900 border border-zinc-800/60 p-5 rounded-2xl">
-                            <span class="block text-3xl font-extrabold text-emerald-400 tracking-tight">12,450+</span>
-                            <span class="block text-xs font-semibold text-zinc-200 mt-1">Schedules Synchronized</span>
-                            <span class="block text-xs text-zinc-500 mt-0.5">Active secondary and higher education calendars processed.</span>
-                        </div>
-                        <div class="bg-zinc-900 border border-zinc-800/60 p-5 rounded-2xl">
-                            <span class="block text-3xl font-extrabold text-amber-400 tracking-tight">4.9 / 5.0</span>
-                            <span class="block text-xs font-semibold text-zinc-200 mt-1">User Satisfaction Rating</span>
-                            <span class="block text-xs text-zinc-500 mt-0.5">Consolidated peer review score across 50 core subjects.</span>
-                        </div>
+                        <button type="button" onclick="selectEngineMode('planner')" class="text-left bg-zinc-900 border border-zinc-800/60 hover:border-cyan-500/40 p-5 rounded-2xl transition">
+                            <span class="block text-2xl">📚</span>
+                            <span class="block text-sm font-bold text-cyan-400 mt-2">Study Planner</span>
+                            <span class="block text-xs text-zinc-400 mt-1 leading-relaxed">Enter your exam date and how confident you feel in each subject. Weaker subjects get more time.</span>
+                        </button>
+                        <button type="button" onclick="selectEngineMode('milestone')" class="text-left bg-zinc-900 border border-zinc-800/60 hover:border-emerald-500/40 p-5 rounded-2xl transition">
+                            <span class="block text-2xl">🧩</span>
+                            <span class="block text-sm font-bold text-emerald-400 mt-2">Milestone Matrix</span>
+                            <span class="block text-xs text-zinc-400 mt-1 leading-relaxed">Break a big project into small checkpoints with dates, plus a few resources to get started.</span>
+                        </button>
+                        <button type="button" onclick="selectEngineMode('booster')" class="text-left bg-zinc-900 border border-zinc-800/60 hover:border-amber-500/40 p-5 rounded-2xl transition">
+                            <span class="block text-2xl">⚡</span>
+                            <span class="block text-sm font-bold text-amber-400 mt-2">Daily Booster</span>
+                            <span class="block text-xs text-zinc-400 mt-1 leading-relaxed">List today's tasks and your free hours to get a focused Pomodoro-style schedule with breaks.</span>
+                        </button>
                     </div>
                 </section>
 
                 <section class="border-t border-zinc-900 pt-8 space-y-6">
                     <div class="text-left">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Verified Feedback</span>
-                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">Praise From High-Achieving Students</h2>
+                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">How It Works</span>
+                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">From Deadline to Plan in Three Steps</h2>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-zinc-900/40 border border-zinc-800/50 p-6 rounded-2xl space-y-4">
-                            <p class="text-sm text-zinc-300 italic leading-relaxed">
-                                "ScholarSync transformed how I prepared for advanced placement exams. The ability to calibrate custom study timelines based directly on my target confidence level pushed my diagnostic performance much higher."
-                            </p>
-                            <div class="flex items-center gap-2 pt-2 border-t border-zinc-800/60">
-                                <div class="h-6 w-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400">SM</div>
-                                <span class="text-xs font-bold text-zinc-400">Sarah M. — Grade 11 Honors Scholar</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-zinc-900/40 border border-zinc-800/50 p-6 rounded-2xl space-y-4">
-                            <p class="text-sm text-zinc-300 italic leading-relaxed">
-                                "Breaking down my final research projects into automated intermediate targets minimized my academic stress. The layout keeps me aligned with daily objectives without causing planning fatigue."
-                            </p>
-                            <div class="flex items-center gap-2 pt-2 border-t border-zinc-800/60">
-                                <div class="h-6 w-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400">DK</div>
-                                <span class="text-xs font-bold text-zinc-400">David K. — Grade 12 Senior</span>
-                            </div>
-                        </div>
-                    </div>
+                    <ol class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
+                            <span class="text-xs font-bold text-zinc-500">STEP 1</span>
+                            <p class="text-sm text-zinc-300 mt-1">Pick an engine and fill in your dates, subjects or tasks.</p>
+                        </li>
+                        <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
+                            <span class="text-xs font-bold text-zinc-500">STEP 2</span>
+                            <p class="text-sm text-zinc-300 mt-1">The AI builds a day-by-day plan you can read right on the page.</p>
+                        </li>
+                        <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
+                            <span class="text-xs font-bold text-zinc-500">STEP 3</span>
+                            <p class="text-sm text-zinc-300 mt-1">Signed in with Google? Add the plan to your calendar in one click.</p>
+                        </li>
+                    </ol>
+                    <p class="text-xs text-zinc-500">AI plans are suggestions. Double-check dates against your school's official schedule.</p>
                 </section>
             </div>
 
             <div id="view-demo" class="hidden space-y-8">
                 <div class="border-b border-zinc-900 pb-4">
-                    <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Active Sandbox</span>
+                    <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Workspace</span>
                     <h2 class="text-2xl font-extrabold tracking-tight text-zinc-100">AI Optimization Workspace</h2>
-                    <p class="text-xs text-zinc-400 mt-1">Select an objective framework inside the sidebar dropdown or interface modules to configure calculations.</p>
+                    <p class="text-xs text-zinc-400 mt-1">Choose an engine below, fill in the details, and generate your plan.</p>
                 </div>
 
-                <div class="bg-zinc-900 p-6 md:p-8 rounded-3xl shadow-2xl border border-zinc-800/80 relative overflow-hidden">
+                <div class="grid grid-cols-3 gap-2 bg-zinc-900 border border-zinc-800/80 p-1.5 rounded-2xl" role="tablist">
+                    <button type="button" role="tab" data-mode-tab="planner" onclick="changeMode('planner')" class="px-2 py-2.5 rounded-xl text-xs font-bold transition">Study Planner</button>
+                    <button type="button" role="tab" data-mode-tab="milestone" onclick="changeMode('milestone')" class="px-2 py-2.5 rounded-xl text-xs font-bold transition">Milestones</button>
+                    <button type="button" role="tab" data-mode-tab="booster" onclick="changeMode('booster')" class="px-2 py-2.5 rounded-xl text-xs font-bold transition">Daily Booster</button>
+                </div>
+
+                <form id="engine-form" onsubmit="event.preventDefault(); executeAiEngine();" class="bg-zinc-900 p-6 md:p-8 rounded-3xl shadow-2xl border border-zinc-800/80 relative overflow-hidden" novalidate>
                     <div class="absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-cyan-500/5 to-transparent rounded-full blur-2xl pointer-events-none"></div>
 
                     <div id="wrapper-planner" class="mode-view space-y-5">
                         <div class="border-b border-zinc-800 pb-3">
                             <h3 class="text-lg font-bold text-cyan-400 tracking-tight">Study Planner Configuration</h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Map core test deadlines alongside current target values.</p>
+                            <p class="text-xs text-zinc-500 mt-0.5">Add your exam date and how confident you feel in each subject.</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="md:col-span-1">
-                                <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Exam Start Date</label>
+                                <label for="input-date-planner" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Exam Start Date</label>
                                 <input type="date" id="input-date-planner" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Subjects & Confidence Levels (Scale 1-5)</label>
-                                <textarea id="input-sub-planner" rows="3" placeholder="Math: 2&#10;History: 5&#10;Chemistry: 3" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition"></textarea>
+                                <label for="input-sub-planner" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Subjects & Confidence Levels (1 = weakest, 5 = strongest)</label>
+                                <textarea id="input-sub-planner" rows="3" maxlength="2000" placeholder="Math: 2&#10;History: 5&#10;Chemistry: 3" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition"></textarea>
                             </div>
                         </div>
                     </div>
@@ -311,22 +329,22 @@
                     <div id="wrapper-milestone" class="mode-view hidden space-y-5">
                         <div class="border-b border-zinc-800 pb-3">
                             <h3 class="text-lg font-bold text-emerald-400 tracking-tight">Project Milestone Generator</h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Deconstruct structural parameters into localized targets.</p>
+                            <p class="text-xs text-zinc-500 mt-0.5">Break a big assignment into smaller dated checkpoints.</p>
                         </div>
                         <div class="space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Project Assignment Name</label>
-                                    <input type="text" id="input-title-milestone" placeholder="AP History Research Paper" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition">
+                                    <label for="input-title-milestone" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Project Assignment Name</label>
+                                    <input type="text" id="input-title-milestone" maxlength="200" placeholder="AP History Research Paper" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Final Deadline</label>
+                                    <label for="input-date-milestone" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Final Deadline</label>
                                     <input type="date" id="input-date-milestone" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Core Requirements</label>
-                                <textarea id="input-req-milestone" rows="2" placeholder="Minimum 4 sources, MLA guidelines, 1500 words" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"></textarea>
+                                <label for="input-req-milestone" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Core Requirements</label>
+                                <textarea id="input-req-milestone" rows="2" maxlength="2000" placeholder="Minimum 4 sources, MLA guidelines, 1500 words" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"></textarea>
                             </div>
                         </div>
                     </div>
@@ -334,37 +352,36 @@
                     <div id="wrapper-booster" class="mode-view hidden space-y-5">
                         <div class="border-b border-zinc-800 pb-3">
                             <h3 class="text-lg font-bold text-amber-400 tracking-tight">Daily Booster Task Grid</h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Map hourly parameters against action lists.</p>
+                            <p class="text-xs text-zinc-500 mt-0.5">List today's tasks and how much free time you have.</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Tasks for Today</label>
-                                <textarea id="input-tasks-booster" rows="3" placeholder="Read English Chapter 3, Finish calculus quiz prep" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition"></textarea>
+                                <label for="input-tasks-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Tasks for Today</label>
+                                <textarea id="input-tasks-booster" rows="3" maxlength="2000" placeholder="Read English Chapter 3, Finish calculus quiz prep" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition"></textarea>
                             </div>
                             <div class="md:col-span-1">
-                                <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Total Available Free Hours</label>
-                                <input type="number" id="input-hours-booster" min="1" max="15" placeholder="4" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
+                                <label for="input-hours-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Free Hours Today</label>
+                                <input type="number" id="input-hours-booster" min="0.5" max="16" step="0.5" placeholder="4" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
                             </div>
                         </div>
                     </div>
 
-                    <button onclick="executeAiEngine()" class="w-full mt-6 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-cyan-500/5 transition duration-200 text-center text-sm tracking-wide flex items-center justify-center gap-2 group">
-                        Sync My Strategy <span class="group-hover:translate-x-1 transition duration-150">➔</span>
+                    <button type="submit" id="generate-btn" class="w-full mt-6 bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-cyan-500/5 transition duration-200 text-center text-sm tracking-wide flex items-center justify-center gap-2 group">
+                        <span id="generate-btn-label">Sync My Strategy</span> <span class="group-hover:translate-x-1 transition duration-150">➔</span>
                     </button>
-                </div>
+                </form>
 
-                <div id="response-block" class="hidden bg-zinc-900 p-6 md:p-8 rounded-3xl border border-zinc-800/80 shadow-2xl relative">
-                    <div class="flex items-center justify-between mb-4 border-b border-zinc-800/80 pb-3">
+                <div id="response-block" class="hidden bg-zinc-900 p-6 md:p-8 rounded-3xl border border-zinc-800/80 shadow-2xl relative" aria-live="polite">
+                    <div class="flex items-center justify-between mb-4 border-b border-zinc-800/80 pb-3 gap-3">
                         <h3 class="text-sm font-bold text-zinc-300 flex items-center gap-2">
                             <span class="h-2 w-2 rounded-full bg-cyan-500 animate-ping"></span>
                             Execution Plan Blueprint
                         </h3>
-                        <span id="badge-indicator" class="px-3 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/10">
-                            Sync Active
+                        <span id="badge-indicator" class="px-3 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider border border-transparent">
+                            Study Planner
                         </span>
                     </div>
-                    <div id="response-payload" class="markdown-content text-zinc-200 leading-relaxed text-sm md:text-base">
-                        </div>
+                    <div id="response-payload" class="markdown-content text-zinc-200 leading-relaxed text-sm md:text-base break-words"></div>
                 </div>
             </div>
 
@@ -372,73 +389,259 @@
     </main>
 
     <script>
+        const MODES = ['planner', 'milestone', 'booster'];
+        const MODE_LABELS = { planner: 'Study Planner', milestone: 'Milestone Matrix', booster: 'Daily Booster' };
+        const MODE_COLORS = { planner: '#22d3ee', milestone: '#34d399', booster: '#fbbf24' };
+        const MODE_TEXT_CLASSES = { planner: 'text-cyan-400', milestone: 'text-emerald-400', booster: 'text-amber-400' };
+        const NOTICE_STYLES = {
+            success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+            error: 'bg-red-500/10 border-red-500/20 text-red-400',
+            info: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300',
+        };
+        const XP_PER_PLAN = 25;
+
         let selectedMode = 'planner';
-        let currentAiResponseString = '';
-        let currentPayloadMap = {};
+        let isGenerating = false;
+        // The last generated plan, kept with the mode and inputs it was made from so a later tab switch can't mismatch the sync
+        let lastPlan = null;
 
-        let streak = parseInt(localStorage.getItem('ss_streak')) || 1;
-        let points = parseInt(localStorage.getItem('ss_points')) || 100;
+        // ---------- storage helpers (localStorage can throw in private mode) ----------
+        function readInt(key, fallback) {
+            try {
+                const value = parseInt(localStorage.getItem(key), 10);
+                return Number.isFinite(value) ? value : fallback;
+            } catch { return fallback; }
+        }
+        function readStr(key) {
+            try { return localStorage.getItem(key); } catch { return null; }
+        }
+        function save(key, value) {
+            try { localStorage.setItem(key, String(value)); } catch { /* ignore */ }
+        }
 
-        document.getElementById('stat-streak').innerText = `${streak} Day`;
-        document.getElementById('stat-points').innerText = `${points} XP`;
+        // Local calendar date as YYYY-MM-DD (en-CA formats that way)
+        function localDateStr(offsetDays = 0) {
+            const d = new Date();
+            d.setDate(d.getDate() + offsetDays);
+            return d.toLocaleDateString('en-CA');
+        }
 
+        // ---------- streak & XP ----------
+        let streak = readInt('ss_streak', 0);
+        let points = readInt('ss_points', 0);
+
+        // A streak only survives if the last plan was made today or yesterday
+        const lastActiveDay = readStr('ss_last_day');
+        if (lastActiveDay !== localDateStr() && lastActiveDay !== localDateStr(-1)) {
+            streak = 0;
+        }
+
+        function renderStats() {
+            document.getElementById('stat-streak').textContent = `${streak} ${streak === 1 ? 'Day' : 'Days'}`;
+            document.getElementById('stat-points').textContent = `${points} XP`;
+        }
+
+        function recordPlanCreated() {
+            const today = localDateStr();
+            const last = readStr('ss_last_day');
+            if (last !== today) {
+                streak = (last === localDateStr(-1)) ? streak + 1 : 1;
+                save('ss_last_day', today);
+                save('ss_streak', streak);
+            }
+            points += XP_PER_PLAN;
+            save('ss_points', points);
+            renderStats();
+        }
+
+        // ---------- navigation ----------
         function navigateToHome() {
             document.getElementById('view-demo').classList.add('hidden');
             document.getElementById('view-home').classList.remove('hidden');
             closeSidebarDropdown();
+            window.scrollTo({ top: 0 });
         }
 
         function navigateToDemo() {
             document.getElementById('view-home').classList.add('hidden');
             document.getElementById('view-demo').classList.remove('hidden');
             closeSidebarDropdown();
+            window.scrollTo({ top: 0 });
         }
 
         function toggleSidebarDropdown() {
             const dropdown = document.getElementById('sidebar-features-dropdown');
-            dropdown.classList.toggle('hidden');
+            const isOpen = dropdown.classList.toggle('hidden') === false;
+            document.getElementById('dropdown-trigger-btn').setAttribute('aria-expanded', String(isOpen));
         }
 
         function closeSidebarDropdown() {
-            const dropdown = document.getElementById('sidebar-features-dropdown');
-            dropdown.classList.add('hidden');
+            document.getElementById('sidebar-features-dropdown').classList.add('hidden');
+            document.getElementById('dropdown-trigger-btn').setAttribute('aria-expanded', 'false');
         }
 
         function selectEngineMode(targetMode) {
-            const textLabels = { planner: 'Study Planner', milestone: 'Milestone Matrix', booster: 'Daily Booster' };
-            document.getElementById('dropdown-active-label').innerText = textLabels[targetMode];
-
             navigateToDemo();
             changeMode(targetMode);
         }
 
         function changeMode(targetMode) {
+            if (!MODES.includes(targetMode)) return;
             selectedMode = targetMode;
+            const color = MODE_COLORS[targetMode];
 
-            document.querySelectorAll('.mode-view').forEach(element => element.classList.add('hidden'));
+            document.querySelectorAll('.mode-view').forEach(el => el.classList.add('hidden'));
             document.getElementById(`wrapper-${targetMode}`).classList.remove('hidden');
+            document.getElementById('dropdown-active-label').textContent = MODE_LABELS[targetMode];
 
-            ['planner', 'milestone', 'booster'].forEach(modeKey => {
-                document.getElementById(`tab-${modeKey}`).style.borderColor = 'transparent';
-                document.getElementById(`tab-${modeKey}`).classList.remove('text-cyan-400', 'text-emerald-400', 'text-amber-400');
-                document.getElementById(`tab-${modeKey}`).classList.add('text-zinc-400');
+            // Sidebar dropdown items
+            document.querySelectorAll('[data-mode-item]').forEach(el => {
+                const active = el.dataset.modeItem === targetMode;
+                el.style.borderColor = active ? MODE_COLORS[el.dataset.modeItem] : 'transparent';
+                el.classList.remove(...Object.values(MODE_TEXT_CLASSES), 'text-zinc-400');
+                el.classList.add(active ? MODE_TEXT_CLASSES[el.dataset.modeItem] : 'text-zinc-400');
             });
 
-            const borderColors = { planner: '#22d3ee', milestone: '#34d399', booster: '#fbbf24' };
-            const activeColorClasses = { planner: 'text-cyan-400', milestone: 'text-emerald-400', booster: 'text-amber-400' };
-            const currentBadge = document.getElementById('badge-indicator');
+            // Workspace tabs (visible on every screen size)
+            document.querySelectorAll('[data-mode-tab]').forEach(el => {
+                const active = el.dataset.modeTab === targetMode;
+                el.setAttribute('aria-selected', String(active));
+                el.style.backgroundColor = active ? MODE_COLORS[el.dataset.modeTab] + '22' : 'transparent';
+                el.style.color = active ? MODE_COLORS[el.dataset.modeTab] : '#a1a1aa';
+            });
 
-            document.getElementById(`tab-${targetMode}`).style.borderColor = borderColors[targetMode];
-            document.getElementById(`tab-${targetMode}`).classList.remove('text-zinc-400');
-            document.getElementById(`tab-${targetMode}`).classList.add(activeColorClasses[targetMode]);
-
-            currentBadge.style.backgroundColor = borderColors[targetMode] + '33';
-            currentBadge.style.color = borderColors[targetMode];
-            currentBadge.innerText = `${targetMode} Mode`;
+            closeSidebarDropdown();
         }
 
+        function setBadge(mode) {
+            const badge = document.getElementById('badge-indicator');
+            badge.style.backgroundColor = MODE_COLORS[mode] + '22';
+            badge.style.borderColor = MODE_COLORS[mode] + '33';
+            badge.style.color = MODE_COLORS[mode];
+            badge.textContent = MODE_LABELS[mode];
+        }
+
+        // ---------- notices (always textContent, never raw HTML) ----------
+        function makeNotice(kind, text, link) {
+            const div = document.createElement('div');
+            div.className = `mt-4 p-4 border text-xs rounded-xl font-semibold ${NOTICE_STYLES[kind]}`;
+            div.textContent = text;
+            if (link) {
+                const a = document.createElement('a');
+                a.href = link.href;
+                a.textContent = link.label;
+                a.className = 'underline ml-1';
+                if (link.external) {
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                }
+                div.append(' ', a);
+            }
+            return div;
+        }
+
+        function makeLoader(text) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 py-4 text-zinc-500 text-sm';
+            const spinner = document.createElement('span');
+            spinner.className = 'animate-spin rounded-full h-4 w-4 border-2 border-zinc-700 border-t-cyan-400';
+            div.append(spinner, document.createTextNode(text));
+            return div;
+        }
+
+        // ---------- input collection & validation ----------
+        function collectInput(mode) {
+            const val = id => document.getElementById(id).value.trim();
+            const today = localDateStr();
+
+            if (mode === 'planner') {
+                const payload = { exam_date: val('input-date-planner'), subjects: val('input-sub-planner') };
+                if (!payload.exam_date) return [null, 'Pick your exam start date.'];
+                if (payload.exam_date < today) return [null, "The exam date can't be in the past."];
+                if (!payload.subjects) return [null, 'List at least one subject with a confidence level, e.g. "Math: 2".'];
+                return [payload, null];
+            }
+            if (mode === 'milestone') {
+                const payload = {
+                    title: val('input-title-milestone'),
+                    requirements: val('input-req-milestone'),
+                    deadline: val('input-date-milestone'),
+                };
+                if (!payload.title) return [null, 'Give your project a name.'];
+                if (!payload.deadline) return [null, 'Pick the final deadline.'];
+                if (payload.deadline < today) return [null, "The deadline can't be in the past."];
+                if (!payload.requirements) return [null, 'Add the core requirements for the project.'];
+                return [payload, null];
+            }
+            const payload = { tasks: val('input-tasks-booster'), hours: val('input-hours-booster') };
+            const hours = parseFloat(payload.hours);
+            if (!payload.tasks) return [null, 'List at least one task for today.'];
+            if (!Number.isFinite(hours) || hours < 0.5 || hours > 16) return [null, 'Free hours must be between 0.5 and 16.'];
+            return [payload, null];
+        }
+
+        function setGenerating(active) {
+            isGenerating = active;
+            document.getElementById('generate-btn').disabled = active;
+            document.getElementById('generate-btn-label').textContent = active ? 'Building your plan…' : 'Sync My Strategy';
+        }
+
+        // ---------- AI generation ----------
+        async function executeAiEngine() {
+            if (isGenerating) return;
+
+            const mode = selectedMode;
+            const container = document.getElementById('response-block');
+            const target = document.getElementById('response-payload');
+            const [payload, problem] = collectInput(mode);
+
+            container.classList.remove('hidden');
+            setBadge(mode);
+
+            if (problem) {
+                target.replaceChildren(makeNotice('error', problem));
+                return;
+            }
+
+            setGenerating(true);
+            target.replaceChildren(makeLoader('Building your plan and calculating time blocks…'));
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode, input_data: payload, client_date: localDateStr() }),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok || data.error || typeof data.result !== 'string') {
+                    target.replaceChildren(makeNotice('error', data.error || `Something went wrong (HTTP ${response.status}). Please try again.`));
+                    return;
+                }
+
+                lastPlan = { mode, payload, text: data.result };
+                // The model's output is untrusted: sanitize the rendered markdown before inserting it
+                target.innerHTML = DOMPurify.sanitize(marked.parse(data.result));
+                recordPlanCreated();
+
+                if (data.can_sync) {
+                    showSyncModal();
+                } else if (data.is_logged_in) {
+                    target.append(makeNotice('info', 'Calendar access is off for your account, so this plan can\'t be synced.', { href: '/login', label: 'Sign in again to allow it' }));
+                } else {
+                    target.append(makeNotice('info', 'Want this in your calendar?', { href: '/login', label: 'Sign in with Google' }));
+                }
+            } catch {
+                target.replaceChildren(makeNotice('error', 'Could not reach the server. Check your connection and try again.'));
+            } finally {
+                setGenerating(false);
+            }
+        }
+
+        // ---------- calendar sync ----------
         function showSyncModal() {
             document.getElementById('sync-modal').classList.remove('hidden');
+            document.getElementById('sync-confirm-btn').focus();
         }
 
         function dismissSyncModal() {
@@ -447,94 +650,70 @@
 
         async function confirmCalendarSync() {
             dismissSyncModal();
-            const targetText = document.getElementById('response-payload');
-            const cachedHtml = targetText.innerHTML;
+            if (!lastPlan) return;
 
-            targetText.innerHTML += `<div id="sync-loader" class="text-xs text-zinc-500 mt-4 flex items-center gap-2"><span class="animate-spin rounded-full h-3 w-3 border-2 border-zinc-700 border-t-cyan-400"></span> Writing blocks to your Google Calendar main feed...</div>`;
+            const target = document.getElementById('response-payload');
+            target.querySelectorAll('[data-sync-status]').forEach(el => el.remove());
 
+            const loader = makeLoader('Adding this plan to your Google Calendar…');
+            loader.dataset.syncStatus = '';
+            target.append(loader);
+
+            let notice;
             try {
                 const response = await fetch('/api/sync-calendar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        mode: selectedMode,
-                        input_data: currentPayloadMap,
-                        ai_response: currentAiResponseString
-                    })
+                        mode: lastPlan.mode,
+                        input_data: lastPlan.payload,
+                        ai_response: lastPlan.text,
+                        client_date: localDateStr(),
+                    }),
                 });
-                const confirmation = await response.json();
-                document.getElementById('sync-loader').remove();
+                const data = await response.json().catch(() => ({}));
 
-                if (confirmation.success) {
-                    targetText.innerHTML = cachedHtml + `\n\n<div class="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-semibold">📅 **ScholarSync Automations:** ${confirmation.message}</div>`;
+                if (response.ok && data.success) {
+                    const link = typeof data.link === 'string' && data.link.startsWith('https://')
+                        ? { href: data.link, label: 'Open in Google Calendar', external: true }
+                        : null;
+                    notice = makeNotice('success', `📅 ${data.message}`, link);
+                } else if (data.reauth) {
+                    notice = makeNotice('error', data.error, { href: '/login', label: 'Sign in again' });
                 } else {
-                    targetText.innerHTML = cachedHtml + `\n\n<div class="mt-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl font-semibold">⚠️ Failed to sync calendar: ${confirmation.error}</div>`;
+                    notice = makeNotice('error', `Calendar sync failed: ${data.error || `HTTP ${response.status}`}`);
                 }
-            } catch (err) {
-                if(document.getElementById('sync-loader')) document.getElementById('sync-loader').remove();
-                targetText.innerHTML = cachedHtml + `\n\n<div class="mt-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl font-semibold">⚠️ Networking pipeline broken during synchronization step.</div>`;
+            } catch {
+                notice = makeNotice('error', 'Could not reach the server while syncing. Please try again.');
             }
+
+            loader.remove();
+            notice.dataset.syncStatus = '';
+            target.append(notice);
         }
 
-        async function executeAiEngine() {
-            const container = document.getElementById('response-block');
-            const targetText = document.getElementById('response-payload');
+        // ---------- global listeners & startup ----------
+        document.addEventListener('click', event => {
+            if (!document.getElementById('dropdown-wrapper').contains(event.target)) closeSidebarDropdown();
+        });
 
-            container.classList.remove('hidden');
-            targetText.innerHTML = `<div class="flex items-center gap-3 py-4 text-zinc-500 text-sm"><span class="animate-spin rounded-full h-4 w-4 border-2 border-zinc-700 border-t-cyan-400"></span> Parsing scheduling algorithms, calculating optimized time blocks...</div>`;
+        document.getElementById('sync-modal').addEventListener('click', event => {
+            if (event.target.id === 'sync-modal') dismissSyncModal();
+        });
 
-            currentPayloadMap = {};
-
-            if (selectedMode === 'planner') {
-                currentPayloadMap = {
-                    exam_date: document.getElementById('input-date-planner').value,
-                    subjects: document.getElementById('input-sub-planner').value
-                };
-            } else if (selectedMode === 'milestone') {
-                currentPayloadMap = {
-                    title: document.getElementById('input-title-milestone').value,
-                    requirements: document.getElementById('input-req-milestone').value,
-                    deadline: document.getElementById('input-date-milestone').value
-                };
-            } else if (selectedMode === 'booster') {
-                currentPayloadMap = {
-                    tasks: document.getElementById('input-tasks-booster').value,
-                    hours: document.getElementById('input-hours-booster').value
-                };
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                dismissSyncModal();
+                closeSidebarDropdown();
             }
+        });
 
-            try {
-                const queryPipeline = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: selectedMode, input_data: currentPayloadMap })
-                });
+        ['input-date-planner', 'input-date-milestone'].forEach(id => {
+            document.getElementById(id).min = localDateStr();
+        });
 
-                const finalResponse = await queryPipeline.json();
-
-                if (finalResponse.error) {
-                    targetText.innerHTML = `<span class="text-red-400 font-medium text-sm">Error encountered: ${finalResponse.error}</span>`;
-                } else {
-                    currentAiResponseString = finalResponse.result;
-                    targetText.innerHTML = marked.parse(currentAiResponseString);
-
-                    points += 25;
-                    if (Math.random() > 0.7) streak += 1;
-
-                    localStorage.setItem('ss_points', points);
-                    localStorage.setItem('ss_streak', streak);
-
-                    document.getElementById('stat-points').innerText = `${points} XP`;
-                    document.getElementById('stat-streak').innerText = `${streak} Day`;
-
-                    if (finalResponse.is_logged_in) {
-                        showSyncModal();
-                    }
-                }
-            } catch (networkError) {
-                targetText.innerHTML = `<span class="text-red-400 font-medium text-sm">Connection failed. Confirm your local developer server endpoint is live.</span>`;
-            }
-        }
+        renderStats();
+        changeMode('planner');
     </script>
 </body>
 </html>
