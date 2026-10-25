@@ -7,7 +7,7 @@ from groq import Groq
 # Load local environment variables from .env file
 load_dotenv()
 
-MODEL = "openai/gpt-oss-120b",
+MODEL = "openai/gpt-oss-120b"
 MAX_FIELD_CHARS = 2000
 MODES = ("planner", "milestone", "booster")
 
@@ -109,6 +109,7 @@ def generate_productivity_data(mode, user_input, today):
             {"role": "user", "content": user_content},
         ],
         temperature=0.6,
-        max_tokens=2048,
+        max_tokens=4096,
+        reasoning_effort="low",
     )
     return response.choices[0].message.content
