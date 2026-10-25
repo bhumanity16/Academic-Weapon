@@ -573,8 +573,7 @@
                 if (!payload.requirements) return [null, 'Add the core requirements for the project.'];
                 return [payload, null];
             }
-            const payload = { tasks: val('input-tasks-booster'), hours: val('input-hours-booster') };
-            const hours = parseFloat(payload.hours);
+            const payload = { tasks: val('input-tasks-booster'), hours: val('input-hours-booster') };            const hours = parseFloat(payload.hours);
             if (!payload.tasks) return [null, 'List at least one task for today.'];
             if (!Number.isFinite(hours) || hours < 0.5 || hours > 16) return [null, 'Free hours must be between 0.5 and 16.'];
             return [payload, null];
