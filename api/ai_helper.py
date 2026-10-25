@@ -7,7 +7,7 @@ from groq import Groq
 # Load local environment variables from .env file
 load_dotenv()
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = "openai/gpt-oss-120b",
 MAX_FIELD_CHARS = 2000
 MODES = ("planner", "milestone", "booster")
 
