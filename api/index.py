@@ -16,7 +16,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Ensuring relative system paths match perfectly during Vercel's serverless compilation
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from ai_helper import MODES, InputError, generate_productivity_data
+from ai_helper import MODES, InputError, extract_events, generate_productivity_data
 
 load_dotenv()
 
@@ -251,6 +251,21 @@ def generate():
         "is_logged_in": "user" in session,
         "can_sync": can_sync_calendar(),
     })
+
+
+@app.route("/api/calendar-events", methods=["POST"])
+@limiter.limit("10 per minute;60 per day")
+def calendar_events():
+    """Turn a generated plan into dated events for the in-browser calendar and .ics download."""
+    data = request.get_json(silent=True) or {}
+    try:
+        events = extract_events(data.get("plan"), today=client_today(data))
+    except InputError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        app.logger.exception("Event extraction failed")
+        return jsonify({"error": "Couldn't turn this plan into calendar events. Please try again."}), 502
+    return jsonify({"events": events})
 
 
 @app.route("/api/sync-calendar", methods=["POST"])

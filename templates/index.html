@@ -149,6 +149,9 @@
                     <button type="button" onclick="navigateToDemo()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
                         Open Planner
                     </button>
+                    <button type="button" onclick="navigateToCalendar()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
+                        My Calendar
+                    </button>
                 </div>
 
                 <div class="space-y-1.5 relative">
@@ -196,6 +199,9 @@
                 <button type="button" onclick="navigateToDemo()" class="hidden sm:inline-block text-xs text-zinc-400 hover:text-zinc-200 font-semibold px-2 py-1.5 transition">
                     Open Planner
                 </button>
+                <button type="button" onclick="navigateToCalendar()" class="text-xs text-zinc-400 hover:text-zinc-200 font-semibold px-1 sm:px-2 py-1.5 transition">
+                    📅<span class="hidden sm:inline"> Calendar</span><span class="sr-only sm:hidden">Calendar</span>
+                </button>
                 <div class="hidden sm:block h-4 w-px bg-zinc-800"></div>
 
                 {% if user %}
@@ -215,7 +221,7 @@
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
                     </svg>
-                    <span>Sign in with Google</span>
+                    <span class="hidden sm:inline">Sign in with Google</span><span class="sm:hidden">Sign in</span>
                 </a>
                 {% endif %}
             </div>
@@ -242,7 +248,7 @@
                         ScholarSync: <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500">Support</span> for Every Deadline.
                     </h1>
                     <p class="text-zinc-400 text-base md:text-lg max-w-2xl leading-relaxed">
-                        Turn exam dates, big projects and today's to-do list into a clear, realistic schedule, then send it to Google Calendar in one click.
+                        Turn exam dates, big projects and today's to-do list into a clear, realistic schedule, then put it on your calendar in one click.
                     </p>
                     <div class="pt-2">
                         <button type="button" onclick="navigateToDemo()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-cyan-500/15 transition duration-150">
@@ -291,7 +297,7 @@
                         </li>
                         <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
                             <span class="text-xs font-bold text-zinc-500">STEP 3</span>
-                            <p class="text-sm text-zinc-300 mt-1">Signed in with Google? Add the plan to your calendar in one click.</p>
+                            <p class="text-sm text-zinc-300 mt-1">Save it to the built-in calendar, download it for any calendar app, or send it to Google Calendar.</p>
                         </li>
                     </ol>
                     <p class="text-xs text-zinc-500">AI plans are suggestions. Double-check dates against your school's official schedule.</p>
@@ -308,7 +314,7 @@
                         <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">About the Project</span>
                         <h2 class="text-xl font-bold tracking-tight text-zinc-200">How ScholarSync Is Built</h2>
                         <p class="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                            ScholarSync is a full-stack web app: a Python (Flask) backend running as a serverless function on Vercel, a large language model through the Groq API to write the plans, and Google sign-in with the Calendar API to save them.
+                            ScholarSync is a full-stack web app: a Python (Flask) backend running as a serverless function on Vercel, a large language model through the Groq API to write the plans, and a built-in calendar that exports standard .ics files, with optional Google Calendar sync.
                         </p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -322,7 +328,7 @@
                         </div>
                         <div class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
                             <span class="block text-sm font-bold text-zinc-200">Private by design</span>
-                            <p class="text-xs text-zinc-400 mt-1 leading-relaxed">There's no database. Plans aren't saved on the server, your streak and XP live only in your own browser, and calendar sync adds a single event only after you confirm it.</p>
+                            <p class="text-xs text-zinc-400 mt-1 leading-relaxed">There's no database. Plans aren't saved on the server, your calendar, streak and XP live only in your own browser, and Google Calendar is touched only if you sign in and confirm.</p>
                         </div>
                         <div class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
                             <span class="block text-sm font-bold text-zinc-200">Built to be safe in public</span>
@@ -432,6 +438,67 @@
                         </span>
                     </div>
                     <div id="response-payload" class="markdown-content text-zinc-200 leading-relaxed text-sm md:text-base break-words"></div>
+
+                    <div id="plan-actions" class="hidden mt-6 pt-5 border-t border-zinc-800/80 space-y-3">
+                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block">Put It on a Calendar</span>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" id="save-local-btn" onclick="savePlanToCalendar()" class="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 disabled:cursor-not-allowed text-zinc-950 font-bold text-xs px-4 py-2.5 rounded-xl transition">
+                                📅 Add to My Calendar
+                            </button>
+                            <button type="button" id="download-ics-btn" onclick="downloadPlanIcs()" class="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed text-zinc-100 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
+                                ⬇ Download for Apple / Outlook / Google (.ics)
+                            </button>
+                            <button type="button" id="google-sync-btn" onclick="showSyncModal()" class="hidden bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
+                                Send to Google Calendar
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-zinc-500">No sign-in needed: "My Calendar" is saved in this browser, and the .ics file opens in any calendar app.</p>
+                        <div id="plan-actions-status"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-calendar" class="hidden space-y-6">
+                <div class="border-b border-zinc-900 pb-4 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Calendar</span>
+                        <h2 class="text-2xl font-extrabold tracking-tight text-zinc-100">My Calendar</h2>
+                        <p class="text-xs text-zinc-400 mt-1">Saved plans live in this browser only. No account or sign-in needed.</p>
+                    </div>
+                    <button type="button" id="cal-export-all" onclick="downloadAllIcs()" class="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-200 font-semibold text-xs px-4 py-2 rounded-xl transition">
+                        ⬇ Export all (.ics)
+                    </button>
+                </div>
+
+                <div id="cal-empty" class="hidden bg-zinc-900/60 border border-dashed border-zinc-800 rounded-2xl p-6 text-center space-y-3">
+                    <p class="text-sm text-zinc-300">Your calendar is empty.</p>
+                    <p class="text-xs text-zinc-500">Build a plan, then tap "Add to My Calendar" under it.</p>
+                    <button type="button" onclick="navigateToDemo()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl transition">Make a Plan ➔</button>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-3 md:p-5 shadow-2xl">
+                    <div class="flex items-center justify-between gap-2 mb-4 px-1">
+                        <button type="button" onclick="shiftMonth(-1)" aria-label="Previous month" class="h-9 w-9 rounded-xl text-zinc-300 hover:bg-zinc-800 transition">‹</button>
+                        <div class="flex items-center gap-3">
+                            <h3 id="cal-month-label" class="text-base md:text-lg font-bold text-zinc-100" aria-live="polite"></h3>
+                            <button type="button" onclick="goToToday()" class="text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded-full px-2.5 py-0.5 transition">Today</button>
+                        </div>
+                        <button type="button" onclick="shiftMonth(1)" aria-label="Next month" class="h-9 w-9 rounded-xl text-zinc-300 hover:bg-zinc-800 transition">›</button>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+                    <div id="cal-grid" class="grid grid-cols-7 gap-1"></div>
+                </div>
+
+                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 md:p-6 space-y-4">
+                    <h3 id="cal-day-title" class="text-sm font-bold text-zinc-200"></h3>
+                    <ul id="cal-day-list" class="space-y-2"></ul>
+                </div>
+
+                <div id="cal-plans-card" class="hidden bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 md:p-6 space-y-4">
+                    <h3 class="text-sm font-bold text-zinc-200">Saved Plans</h3>
+                    <ul id="cal-plan-list" class="space-y-2"></ul>
                 </div>
             </div>
 
@@ -510,18 +577,19 @@
         }
 
         // ---------- navigation ----------
-        function navigateToHome() {
-            document.getElementById('view-demo').classList.add('hidden');
-            document.getElementById('view-home').classList.remove('hidden');
+        function showView(name) {
+            ['home', 'demo', 'calendar'].forEach(view => {
+                document.getElementById(`view-${view}`).classList.toggle('hidden', view !== name);
+            });
             closeSidebarDropdown();
             window.scrollTo({ top: 0 });
         }
 
-        function navigateToDemo() {
-            document.getElementById('view-home').classList.add('hidden');
-            document.getElementById('view-demo').classList.remove('hidden');
-            closeSidebarDropdown();
-            window.scrollTo({ top: 0 });
+        function navigateToHome() { showView('home'); }
+        function navigateToDemo() { showView('demo'); }
+        function navigateToCalendar() {
+            showView('calendar');
+            renderCalendar();
         }
 
         function toggleSidebarDropdown() {
@@ -589,6 +657,12 @@
                 if (link.external) {
                     a.target = '_blank';
                     a.rel = 'noopener noreferrer';
+                }
+                if (link.onClick) {
+                    a.addEventListener('click', event => {
+                        event.preventDefault();
+                        link.onClick();
+                    });
                 }
                 div.append(' ', a);
             }
@@ -693,11 +767,13 @@
             setBadge(mode);
 
             if (problem) {
+                hidePlanActions();
                 target.replaceChildren(makeNotice('error', problem));
                 return;
             }
 
             setGenerating(true);
+            hidePlanActions();
             target.replaceChildren(makeLoader('Building your plan… this usually takes 5–15 seconds.'));
 
             try {
@@ -713,18 +789,11 @@
                     return;
                 }
 
-                lastPlan = { mode, payload, text: data.result };
+                lastPlan = { mode, payload, text: data.result, events: null, savedId: null };
                 // The model's output is untrusted: sanitize the rendered markdown before inserting it
                 target.innerHTML = DOMPurify.sanitize(marked.parse(data.result));
                 recordPlanCreated();
-
-                if (data.can_sync) {
-                    showSyncModal();
-                } else if (data.is_logged_in) {
-                    target.append(makeNotice('info', 'Calendar access is off for your account, so this plan can\'t be synced.', { href: '/login', label: 'Sign in again to allow it' }));
-                } else {
-                    target.append(makeNotice('info', 'Want this in your calendar?', { href: '/login', label: 'Sign in with Google' }));
-                }
+                showPlanActions(data.can_sync);
             } catch {
                 target.replaceChildren(makeNotice('error', 'Could not reach the server. Check your connection and try again.'));
             } finally {
@@ -746,12 +815,9 @@
             dismissSyncModal();
             if (!lastPlan) return;
 
-            const target = document.getElementById('response-payload');
-            target.querySelectorAll('[data-sync-status]').forEach(el => el.remove());
-
+            const target = document.getElementById('plan-actions-status');
             const loader = makeLoader('Adding this plan to your Google Calendar…');
-            loader.dataset.syncStatus = '';
-            target.append(loader);
+            target.replaceChildren(loader);
 
             let notice;
             try {
@@ -781,9 +847,404 @@
                 notice = makeNotice('error', 'Could not reach the server while syncing. Please try again.');
             }
 
-            loader.remove();
-            notice.dataset.syncStatus = '';
-            target.append(notice);
+            target.replaceChildren(notice);
+        }
+
+        // ---------- plan actions (under a generated plan) ----------
+        function showPlanActions(canSync) {
+            document.getElementById('plan-actions').classList.remove('hidden');
+            document.getElementById('plan-actions-status').replaceChildren();
+            document.getElementById('google-sync-btn').classList.toggle('hidden', !canSync);
+            const saveBtn = document.getElementById('save-local-btn');
+            saveBtn.disabled = false;
+            saveBtn.textContent = '📅 Add to My Calendar';
+        }
+
+        function hidePlanActions() {
+            document.getElementById('plan-actions').classList.add('hidden');
+        }
+
+        function setPlanStatus(node) {
+            document.getElementById('plan-actions-status').replaceChildren(node);
+        }
+
+        // Ask the server to turn the plan into dated events once, then reuse them
+        async function ensurePlanEvents() {
+            if (lastPlan.events) return lastPlan.events;
+            const response = await fetch('/api/calendar-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: lastPlan.text, client_date: localDateStr() }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !Array.isArray(data.events)) {
+                throw new Error(data.error || `Something went wrong (HTTP ${response.status}). Please try again.`);
+            }
+            lastPlan.events = data.events;
+            return data.events;
+        }
+
+        async function withPlanEvents(loadingText, action) {
+            if (!lastPlan) return;
+            const buttons = ['save-local-btn', 'download-ics-btn'].map(id => document.getElementById(id));
+            buttons.forEach(b => { b.disabled = true; });
+            setPlanStatus(makeLoader(loadingText));
+            try {
+                action(await ensurePlanEvents());
+            } catch (error) {
+                setPlanStatus(makeNotice('error', error.message || 'Could not reach the server. Please try again.'));
+            } finally {
+                buttons.forEach(b => { b.disabled = false; });
+                if (lastPlan.savedId) {
+                    buttons[0].disabled = true;
+                    buttons[0].textContent = '✓ Added to My Calendar';
+                }
+            }
+        }
+
+        function planTitle(plan) {
+            if (plan.mode === 'milestone') return plan.payload.title;
+            if (plan.mode === 'planner') return `Exam prep (exam ${formatDay(plan.payload.exam_date, { month: 'short', day: 'numeric' })})`;
+            return `Daily Booster · ${formatDay(localDateStr(), { month: 'short', day: 'numeric' })}`;
+        }
+
+        function savePlanToCalendar() {
+            if (lastPlan && lastPlan.savedId) return;
+            withPlanEvents('Placing your plan on the calendar…', events => {
+                const cal = loadCalendar();
+                const planId = newId();
+                cal.plans.push({ id: planId, mode: lastPlan.mode, title: planTitle(lastPlan), created: localDateStr() });
+                events.forEach(e => cal.events.push({ ...e, id: newId(), planId, done: false }));
+                if (!saveCalendar(cal)) {
+                    setPlanStatus(makeNotice('error', "This browser won't let the site save data (private mode?). Use the .ics download instead."));
+                    return;
+                }
+                lastPlan.savedId = planId;
+                calView.month = startOfMonth(events[0].date);
+                calView.selected = events[0].date;
+                setPlanStatus(makeNotice('success', `📅 Added ${events.length} ${events.length === 1 ? 'event' : 'events'} to your calendar.`,
+                    { href: '#', label: 'Open My Calendar', onClick: navigateToCalendar }));
+            });
+        }
+
+        function downloadPlanIcs() {
+            withPlanEvents('Preparing your calendar file…', events => {
+                downloadIcs(events.map(e => ({ ...e, mode: lastPlan.mode })), 'scholarsync-plan.ics');
+                setPlanStatus(makeNotice('success', 'Downloaded scholarsync-plan.ics. Open it to import the plan into your calendar app.'));
+            });
+        }
+
+        // ---------- built-in calendar (stored in this browser only) ----------
+        const CAL_KEY = 'ss_calendar';
+        const calView = { month: startOfMonth(localDateStr()), selected: localDateStr() };
+
+        function newId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        function loadCalendar() {
+            try {
+                const cal = JSON.parse(localStorage.getItem(CAL_KEY));
+                if (cal && Array.isArray(cal.plans) && Array.isArray(cal.events)) return cal;
+            } catch { /* fall through to an empty calendar */ }
+            return { plans: [], events: [] };
+        }
+
+        function saveCalendar(cal) {
+            try {
+                localStorage.setItem(CAL_KEY, JSON.stringify(cal));
+                return true;
+            } catch { return false; }
+        }
+
+        function parseDay(iso) {
+            const [y, m, d] = iso.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function isoDay(d) { return d.toLocaleDateString('en-CA'); }
+
+        function startOfMonth(iso) {
+            const d = parseDay(iso);
+            return new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+
+        function formatDay(iso, options) { return parseDay(iso).toLocaleDateString(undefined, options); }
+
+        function formatTime(hhmm) {
+            const [h, m] = hhmm.split(':').map(Number);
+            return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function shiftMonth(delta) {
+            calView.month = new Date(calView.month.getFullYear(), calView.month.getMonth() + delta, 1);
+            renderCalendar();
+        }
+
+        function goToToday() {
+            calView.month = startOfMonth(localDateStr());
+            calView.selected = localDateStr();
+            renderCalendar();
+        }
+
+        function selectDay(iso) {
+            calView.selected = iso;
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const cal = loadCalendar();
+            const planMode = Object.fromEntries(cal.plans.map(p => [p.id, p.mode]));
+            const byDay = {};
+            cal.events.forEach(e => { (byDay[e.date] = byDay[e.date] || []).push(e); });
+            Object.values(byDay).forEach(list => list.sort((a, b) => (a.start || '').localeCompare(b.start || '')));
+
+            document.getElementById('cal-empty').classList.toggle('hidden', cal.events.length > 0);
+            document.getElementById('cal-export-all').classList.toggle('hidden', cal.events.length === 0);
+            document.getElementById('cal-month-label').textContent =
+                calView.month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+            // Month grid: always 6 rows starting on the Sunday before the 1st
+            const grid = document.getElementById('cal-grid');
+            const first = new Date(calView.month);
+            first.setDate(1 - first.getDay());
+            const today = localDateStr();
+            const cells = [];
+            for (let i = 0; i < 42; i++) {
+                const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + i);
+                const iso = isoDay(d);
+                const events = byDay[iso] || [];
+                const inMonth = d.getMonth() === calView.month.getMonth();
+
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.onclick = () => selectDay(iso);
+                cell.setAttribute('aria-label', `${formatDay(iso, { weekday: 'long', month: 'long', day: 'numeric' })}, ${events.length} ${events.length === 1 ? 'event' : 'events'}`);
+                if (iso === calView.selected) cell.setAttribute('aria-current', 'date');
+                cell.className = 'min-h-[3.25rem] md:min-h-[5.5rem] rounded-xl p-1.5 text-left flex flex-col gap-1 border transition ' +
+                    (iso === calView.selected ? 'border-cyan-500/70 bg-cyan-500/10 ' : 'border-transparent hover:bg-zinc-800/60 ') +
+                    (inMonth ? '' : 'opacity-40');
+
+                const num = document.createElement('span');
+                num.textContent = d.getDate();
+                num.className = 'text-xs font-bold h-5 w-5 flex items-center justify-center rounded-full ' +
+                    (iso === today ? 'bg-cyan-500 text-zinc-950' : 'text-zinc-300');
+                cell.append(num);
+
+                if (events.length) {
+                    // Phones: coloured dots. Larger screens: the first two titles.
+                    const dots = document.createElement('span');
+                    dots.className = 'flex flex-wrap gap-0.5 md:hidden';
+                    events.slice(0, 4).forEach(e => {
+                        const dot = document.createElement('span');
+                        dot.className = 'h-1.5 w-1.5 rounded-full';
+                        dot.style.backgroundColor = MODE_COLORS[planMode[e.planId]] || '#a1a1aa';
+                        dots.append(dot);
+                    });
+                    const titles = document.createElement('span');
+                    titles.className = 'hidden md:flex flex-col gap-0.5 min-w-0';
+                    events.slice(0, 2).forEach(e => {
+                        const t = document.createElement('span');
+                        t.className = 'truncate text-[10px] leading-tight px-1 py-0.5 rounded ' + (e.done ? 'line-through opacity-50' : '');
+                        t.style.color = MODE_COLORS[planMode[e.planId]] || '#a1a1aa';
+                        t.style.backgroundColor = (MODE_COLORS[planMode[e.planId]] || '#a1a1aa') + '18';
+                        t.textContent = e.title;
+                        titles.append(t);
+                    });
+                    if (events.length > 2) {
+                        const more = document.createElement('span');
+                        more.className = 'text-[10px] text-zinc-500 px-1';
+                        more.textContent = `+${events.length - 2} more`;
+                        titles.append(more);
+                    }
+                    cell.append(dots, titles);
+                }
+                cells.push(cell);
+            }
+            grid.replaceChildren(...cells);
+
+            renderDayList(byDay[calView.selected] || [], planMode);
+            renderPlanList(cal);
+        }
+
+        function renderDayList(events, planMode) {
+            document.getElementById('cal-day-title').textContent =
+                formatDay(calView.selected, { weekday: 'long', month: 'long', day: 'numeric' });
+            const list = document.getElementById('cal-day-list');
+            if (!events.length) {
+                const empty = document.createElement('li');
+                empty.className = 'text-xs text-zinc-500';
+                empty.textContent = 'Nothing planned for this day.';
+                list.replaceChildren(empty);
+                return;
+            }
+            list.replaceChildren(...events.map(e => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start gap-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5';
+
+                const check = document.createElement('input');
+                check.type = 'checkbox';
+                check.checked = e.done;
+                check.className = 'mt-1 h-4 w-4 shrink-0 accent-cyan-500 cursor-pointer';
+                check.setAttribute('aria-label', `Mark "${e.title}" as done`);
+                check.onchange = () => updateEvent(e.id, ev => { ev.done = check.checked; });
+
+                const body = document.createElement('div');
+                body.className = 'flex-1 min-w-0';
+                const time = document.createElement('span');
+                time.className = 'block text-[11px] font-semibold';
+                time.style.color = MODE_COLORS[planMode[e.planId]] || '#a1a1aa';
+                time.textContent = e.start ? (e.end ? `${formatTime(e.start)} – ${formatTime(e.end)}` : formatTime(e.start)) : 'Any time';
+                const title = document.createElement('span');
+                title.className = 'block text-sm break-words ' + (e.done ? 'line-through text-zinc-500' : 'text-zinc-200');
+                title.textContent = e.title;
+                body.append(time, title);
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'text-zinc-500 hover:text-red-400 text-lg leading-none px-1 transition';
+                remove.textContent = '×';
+                remove.setAttribute('aria-label', `Remove "${e.title}"`);
+                remove.onclick = () => {
+                    const cal = loadCalendar();
+                    cal.events = cal.events.filter(ev => ev.id !== e.id);
+                    saveCalendar(cal);
+                    renderCalendar();
+                };
+
+                li.append(check, body, remove);
+                return li;
+            }));
+        }
+
+        function renderPlanList(cal) {
+            document.getElementById('cal-plans-card').classList.toggle('hidden', cal.plans.length === 0);
+            document.getElementById('cal-plan-list').replaceChildren(...cal.plans.slice().reverse().map(plan => {
+                const events = cal.events.filter(e => e.planId === plan.id).sort((a, b) => a.date.localeCompare(b.date));
+                const li = document.createElement('li');
+                li.className = 'flex flex-wrap items-center gap-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5';
+
+                const info = document.createElement('button');
+                info.type = 'button';
+                info.className = 'flex-1 min-w-[10rem] text-left';
+                info.onclick = () => {
+                    if (!events.length) return;
+                    calView.month = startOfMonth(events[0].date);
+                    calView.selected = events[0].date;
+                    renderCalendar();
+                };
+                const name = document.createElement('span');
+                name.className = 'block text-sm font-semibold break-words';
+                name.style.color = MODE_COLORS[plan.mode];
+                name.textContent = plan.title;
+                const meta = document.createElement('span');
+                meta.className = 'block text-[11px] text-zinc-500';
+                const done = events.filter(e => e.done).length;
+                meta.textContent = events.length
+                    ? `${MODE_LABELS[plan.mode]} · ${done}/${events.length} done · ${formatDay(events[0].date, { month: 'short', day: 'numeric' })} – ${formatDay(events[events.length - 1].date, { month: 'short', day: 'numeric' })}`
+                    : `${MODE_LABELS[plan.mode]} · no events left`;
+                info.append(name, meta);
+
+                const ics = document.createElement('button');
+                ics.type = 'button';
+                ics.className = 'text-[11px] font-semibold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg px-2.5 py-1.5 transition disabled:opacity-40';
+                ics.textContent = '⬇ .ics';
+                ics.disabled = !events.length;
+                ics.setAttribute('aria-label', `Download "${plan.title}" as a calendar file`);
+                ics.onclick = () => downloadIcs(events.map(e => ({ ...e, mode: plan.mode })), 'scholarsync-plan.ics');
+
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'text-[11px] font-semibold text-red-400 hover:text-red-300 px-2 py-1.5 transition';
+                remove.textContent = 'Remove';
+                remove.onclick = () => {
+                    if (!confirm(`Remove "${plan.title}" and its ${events.length} events from your calendar?`)) return;
+                    const fresh = loadCalendar();
+                    fresh.plans = fresh.plans.filter(p => p.id !== plan.id);
+                    fresh.events = fresh.events.filter(e => e.planId !== plan.id);
+                    saveCalendar(fresh);
+                    if (lastPlan && lastPlan.savedId === plan.id) lastPlan.savedId = null;
+                    renderCalendar();
+                };
+
+                li.append(info, ics, remove);
+                return li;
+            }));
+        }
+
+        function updateEvent(id, change) {
+            const cal = loadCalendar();
+            const event = cal.events.find(e => e.id === id);
+            if (!event) return;
+            change(event);
+            saveCalendar(cal);
+            renderCalendar();
+        }
+
+        function downloadAllIcs() {
+            const cal = loadCalendar();
+            const planMode = Object.fromEntries(cal.plans.map(p => [p.id, p.mode]));
+            downloadIcs(cal.events.map(e => ({ ...e, mode: planMode[e.planId] })), 'scholarsync-calendar.ics');
+        }
+
+        // ---------- .ics export (works with Apple, Google and Outlook calendars) ----------
+        function icsEscape(text) {
+            return String(text).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+        }
+
+        // Lines over 75 bytes must be folded; split on whole characters so multi-byte ones stay intact
+        function icsFold(line) {
+            const encoder = new TextEncoder();
+            const parts = [];
+            let current = '';
+            let bytes = 0;
+            for (const ch of line) {
+                const size = encoder.encode(ch).length;
+                if (bytes + size > (parts.length ? 74 : 75)) {
+                    parts.push(current);
+                    current = '';
+                    bytes = 0;
+                }
+                current += ch;
+                bytes += size;
+            }
+            parts.push(current);
+            return parts.join('\r\n ');
+        }
+
+        function icsDate(iso) { return iso.replace(/-/g, ''); }
+
+        function buildIcs(events) {
+            const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+            const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ScholarSync//Study Planner//EN', 'CALSCALE:GREGORIAN'];
+            events.forEach(e => {
+                lines.push('BEGIN:VEVENT', `UID:${e.id || newId()}@scholarsync`, `DTSTAMP:${stamp}`);
+                if (e.start) {
+                    // Floating local times: the event shows at the same clock time wherever it's imported
+                    lines.push(`DTSTART:${icsDate(e.date)}T${e.start.replace(':', '')}00`);
+                    lines.push(e.end ? `DTEND:${icsDate(e.date)}T${e.end.replace(':', '')}00` : 'DURATION:PT30M');
+                } else {
+                    const next = parseDay(e.date);
+                    next.setDate(next.getDate() + 1);
+                    lines.push(`DTSTART;VALUE=DATE:${icsDate(e.date)}`, `DTEND;VALUE=DATE:${icsDate(isoDay(next))}`);
+                }
+                lines.push(`SUMMARY:${icsEscape(e.title)}`);
+                if (e.mode) lines.push(`DESCRIPTION:${icsEscape(`From ScholarSync (${MODE_LABELS[e.mode]})`)}`);
+                lines.push('END:VEVENT');
+            });
+            lines.push('END:VCALENDAR');
+            return lines.map(icsFold).join('\r\n') + '\r\n';
+        }
+
+        function downloadIcs(events, filename) {
+            const url = URL.createObjectURL(new Blob([buildIcs(events)], { type: 'text/calendar;charset=utf-8' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.append(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
         // ---------- global listeners & startup ----------
@@ -808,6 +1269,7 @@
 
         renderStats();
         changeMode('planner');
+        if (location.hash === '#calendar') navigateToCalendar();
     </script>
 </body>
 </html>

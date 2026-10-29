@@ -1,6 +1,7 @@
+import json
 import os
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -208,3 +209,82 @@ def generate_productivity_data(mode, user_input, today):
     if choice.finish_reason == "length":
         text += TRIMMED_NOTE
     return text
+
+# ---------- turning a finished plan into calendar events ----------
+
+MAX_PLAN_CHARS = 30000
+MAX_EVENTS = 250
+MAX_TITLE_CHARS = 120
+# Events further out than this are almost certainly a misread date
+MAX_DAYS_AHEAD = 400
+
+EXTRACT_PROMPT = (
+    "You convert a student's study plan into calendar events. Return ONLY a JSON object of the form "
+    '{"events": [{"date": "YYYY-MM-DD", "start": "HH:MM" or null, "end": "HH:MM" or null, "title": "..."}]}. '
+    "Rules: one event per scheduled task or study block; skip breaks, tips, resource lists and summaries. "
+    "Use 24-hour times. If a task has no time, set start and end to null. "
+    "If a heading covers a whole week or phase without naming a day, put its tasks on the first day it covers. "
+    "Titles are short (under 80 characters), e.g. 'Math: 10 practice problems'. "
+    "Never invent tasks that aren't in the plan."
+)
+
+
+def _hhmm(value):
+    """'9:05' or '09:05' as '09:05', or None if it isn't a valid 24-hour time."""
+    match = re.fullmatch(r"(\d{1,2}):(\d{2})", str(value or "").strip())
+    padded = f"{int(match[1]):02d}:{match[2]}" if match else None
+    return padded if _clock(padded) is not None else None
+
+
+def _clean_event(raw, today):
+    """One validated event dict, or None if the model's entry is unusable."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        day = date.fromisoformat(str(raw.get("date")))
+    except ValueError:
+        return None
+    if not today - timedelta(days=1) <= day <= today + timedelta(days=MAX_DAYS_AHEAD):
+        return None
+    title = " ".join(str(raw.get("title") or "").split())[:MAX_TITLE_CHARS]
+    if not title:
+        return None
+    start = _hhmm(raw.get("start"))
+    end = _hhmm(raw.get("end")) if start else None
+    # Drop an end time that isn't after the start (e.g. a block that runs past midnight)
+    if end and _clock(end) <= _clock(start):
+        end = None
+    return {"date": day.isoformat(), "start": start, "end": end, "title": title}
+
+
+def extract_events(plan, today):
+    """Turn a plan's markdown into a sorted list of dated events. Raises InputError for bad input."""
+    if not isinstance(plan, str) or not plan.strip():
+        raise InputError("There's no plan to add.")
+    if len(plan) > MAX_PLAN_CHARS:
+        raise InputError("This plan is too long to add to the calendar.")
+
+    client = get_groq_client()
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": EXTRACT_PROMPT + f" Today is {_pretty(today)} ({today.isoformat()})."},
+            {"role": "user", "content": plan},
+        ],
+        temperature=0,
+        max_completion_tokens=8192,
+        reasoning_effort="low",
+        response_format={"type": "json_object"},
+    )
+
+    try:
+        raw_events = json.loads(response.choices[0].message.content or "{}").get("events")
+    except (json.JSONDecodeError, AttributeError):
+        raw_events = None
+    if not isinstance(raw_events, list):
+        raise RuntimeError("The model didn't return a list of events.")
+
+    events = [e for e in (_clean_event(r, today) for r in raw_events[:MAX_EVENTS]) if e]
+    if not events:
+        raise InputError("Couldn't find any dated tasks in this plan.")
+    return sorted(events, key=lambda e: (e["date"], e["start"] or ""))
