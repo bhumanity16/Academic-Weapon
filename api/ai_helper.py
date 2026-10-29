@@ -12,6 +12,8 @@ load_dotenv()
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 MAX_FIELD_CHARS = 2000
 MODES = ("planner", "milestone", "booster")
+# A Daily Booster stop time earlier than this (in minutes) is treated as after midnight
+LATEST_PAST_MIDNIGHT = 5 * 60
 
 # Shared output rules so every mode renders nicely with the frontend's markdown styles
 FORMAT_RULES = (
@@ -59,10 +61,27 @@ def _pretty(d):
     return d.strftime("%A, %B %d, %Y").replace(" 0", " ")
 
 
+def _clock(value):
+    """'HH:MM' as minutes after midnight, or None if it isn't a valid 24-hour time."""
+    value = str(value or "").strip()
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value):
+        return None
+    hours, minutes = value.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
 def _current_time(user_input):
     """The student's local time as HH:MM (sent by the browser), or None if missing/invalid."""
     value = str(user_input.get("current_time") or "").strip()
-    return value if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value) else None
+    return value if _clock(value) is not None else None
+
+
+def _minutes_until(now, end):
+    """Minutes from now until the stop time. A stop time before 5 AM counts as after midnight."""
+    gap = _clock(end) - _clock(now)
+    if gap <= 0 and _clock(end) < LATEST_PAST_MIDNIGHT:
+        gap += 24 * 60
+    return gap
 
 
 def build_prompt(mode, user_input, today):
@@ -126,19 +145,42 @@ def build_prompt(mode, user_input, today):
             raise InputError("Available hours must be a number.")
         if not 0.5 <= hours <= 16:
             raise InputError("Available hours must be between 0.5 and 16.")
+        end = _text(user_input, "end_time", "Stop time")
+        if _clock(end) is None:
+            raise InputError("Stop time must be a valid time (HH:MM).")
         now = _current_time(user_input)
-        start_rule = (
-            f" The current time is {now}. Start the schedule at the next quarter hour after "
-            f"{now}, never earlier."
-            if now else ""
+
+        time_rule = ""
+        if now:
+            window = _minutes_until(now, end)
+            # Leave a little room for rounding up to the next quarter hour
+            if window < 30:
+                raise InputError(f"Your stop time ({end}) has passed or is less than 30 minutes away. Pick a later one.")
+            fits = min(hours, (window // 15) / 4)
+            time_rule = (
+                f" The current time is {now}. Start the schedule at the next quarter hour after "
+                f"{now}, never earlier."
+            )
+            if fits < hours:
+                time_rule += (
+                    f" Only about {fits:g} of the student's {hours:g} hours fit before their stop time. "
+                    "Start the answer with one short sentence telling them so, addressed to them as 'you'. "
+                    "Put the most important tasks first. If any task gets no time at all, list it under "
+                    "a final '### Didn't fit today' heading; otherwise leave that heading out."
+                )
+                hours = fits
+        time_rule += (
+            f" The student must stop by {end}. Nothing may be scheduled at or after {end}, "
+            "not even a break."
         )
+
         system_prompt = (
             "You are ScholarSync's Daily Booster. Take the tasks and time available, then create a "
             "highly actionable micro-schedule for today using techniques like Pomodoro, with breaks. "
             "Activities that don't suit Pomodoro (music practice, exercise) can be one longer block."
-            + start_rule
+            + time_rule
         )
-        user_content = f"Tasks: {tasks}\nAvailable Time: {hours:g} hours"
+        user_content = f"Tasks: {tasks}\nAvailable Time: {hours:g} hours\nStop By: {end}"
 
     return system_prompt + date_info + FORMAT_RULES, user_content
 

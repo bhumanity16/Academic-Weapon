@@ -72,7 +72,7 @@
         .markdown-content th { background: #18181b; color: #f4f4f5; }
 
         /* Keep the native date picker icon visible on the dark background */
-        input[type="date"] { color-scheme: dark; }
+        input[type="date"], input[type="time"] { color-scheme: dark; }
         input[type="date"]::-webkit-calendar-picker-indicator {
             cursor: pointer;
             opacity: 0.75;
@@ -354,7 +354,7 @@
                             <h3 class="text-lg font-bold text-amber-400 tracking-tight">Daily Booster Task Grid</h3>
                             <p class="text-xs text-zinc-500 mt-0.5">List today's tasks and how much free time you have.</p>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div class="md:col-span-2">
                                 <label for="input-tasks-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Tasks for Today</label>
                                 <textarea id="input-tasks-booster" rows="3" maxlength="2000" placeholder="Read English Chapter 3, Finish calculus quiz prep" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition"></textarea>
@@ -362,6 +362,10 @@
                             <div class="md:col-span-1">
                                 <label for="input-hours-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Free Hours Today</label>
                                 <input type="number" id="input-hours-booster" min="0.5" max="16" step="0.5" placeholder="4" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
+                            </div>
+                            <div class="md:col-span-1">
+                                <label for="input-end-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Stop By</label>
+                                <input type="time" id="input-end-booster" value="22:00" step="900" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
                             </div>
                         </div>
                     </div>
@@ -577,10 +581,12 @@
                 tasks: val('input-tasks-booster'),
                 hours: val('input-hours-booster'),
                 current_time: new Date().toTimeString().slice(0, 5),
+                end_time: val('input-end-booster'),
             };
             const hours = parseFloat(payload.hours);
             if (!payload.tasks) return [null, 'List at least one task for today.'];
             if (!Number.isFinite(hours) || hours < 0.5 || hours > 16) return [null, 'Free hours must be between 0.5 and 16.'];
+            if (!payload.end_time) return [null, 'Pick a time to stop by.'];
             return [payload, null];
         }
 
