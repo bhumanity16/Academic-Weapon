@@ -4,6 +4,8 @@ An AI study planner for high school students. ScholarSync turns exam dates, big 
 
 **Live site:** https://scholarsync-kappa.vercel.app/
 
+I once had just one exam the next week, and I underestimated how much studying it would take. I'd already made plans with my friends, and I ended up having to back out of them. I built ScholarSync so students can see how much work they actually have ahead of them, and plan around it.
+
 ## What it does
 
 | Planner | You enter | You get |
