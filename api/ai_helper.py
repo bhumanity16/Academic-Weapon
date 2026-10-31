@@ -25,6 +25,7 @@ TOO_LATE_TO_START = 20 * 60 + 30
 FORMAT_RULES = (
     " Format the answer in Markdown. Use a '### ' heading for each day or phase, "
     "followed by a bullet list of concrete tasks with times or durations. "
+    "Write every time in 12-hour format with AM or PM, like 4:30 PM. "
     "Be realistic for a high school student, keep it concise, and never output raw HTML."
 )
 
@@ -120,7 +121,7 @@ def _today_rule(now, today, days_to_deadline):
     return (
         f" The current time is {_twelve_hour(now)}. Any task scheduled today must start after that time, "
         "never earlier, and today's list should only hold what still fits this evening. "
-        "Write times as AM/PM, and don't mention the current time in headings."
+        "Don't mention the current time in headings."
     )
 
 
