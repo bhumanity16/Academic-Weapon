@@ -18,6 +18,8 @@ MODES = ("planner", "milestone", "booster")
 MAX_PROJECTS = 5
 # A Daily Booster stop time earlier than this (in minutes) is treated as after midnight
 LATEST_PAST_MIDNIGHT = 5 * 60
+# From 8:30 PM a long-range plan starts tomorrow, unless the deadline is too close to wait
+TOO_LATE_TO_START = 20 * 60 + 30
 
 # Shared output rules so every mode renders nicely with the frontend's markdown styles
 FORMAT_RULES = (
@@ -102,6 +104,26 @@ def _current_time(user_input):
     return value if _clock(value) is not None else None
 
 
+def _twelve_hour(now):
+    """'18:40' as '6:40 PM', so the plan copies a format students read."""
+    hours, minutes = divmod(_clock(now), 60)
+    return f"{hours % 12 or 12}:{minutes:02d} {'AM' if hours < 12 else 'PM'}"
+
+
+def _today_rule(now, today, days_to_deadline):
+    """Stops long-range plans scheduling today's tasks at a time that has already passed."""
+    if not now:
+        return ""
+    if _clock(now) >= TOO_LATE_TO_START and days_to_deadline >= 2:
+        tomorrow = _pretty(today + timedelta(days=1))
+        return f" It is already {_twelve_hour(now)}, too late to start today. Schedule nothing today; begin on {tomorrow}."
+    return (
+        f" The current time is {_twelve_hour(now)}. Any task scheduled today must start after that time, "
+        "never earlier, and today's list should only hold what still fits this evening. "
+        "Write times as AM/PM, and don't mention the current time in headings."
+    )
+
+
 def _minutes_until(now, end):
     """Minutes from now until the stop time. A stop time before 5 AM counts as after midnight."""
     gap = _clock(end) - _clock(now)
@@ -143,6 +165,7 @@ def build_prompt(mode, user_input, today):
             "starting after 4 PM. Saturdays and Sundays can have up to 5 hours. "
             "Keep each day to 4-6 bullets. Only use study methods that fit each subject "
             "(for example, no DBQs outside history)."
+            + _today_rule(_current_time(user_input), today, days_left)
         )
         user_content = (
             f"Exam Date: {_pretty(exam_date)}\n"
@@ -165,6 +188,7 @@ def build_prompt(mode, user_input, today):
             "Then suggest 2-3 starting resources. For resources, ONLY name well-known books, "
             "databases (JSTOR, Google Scholar, the school library), or useful search terms. "
             "Never invent specific articles, podcast episodes, websites, or URLs."
+            + _today_rule(_current_time(user_input), today, min((deadline - today).days for _, deadline, _ in projects))
         )
         user_content = "\n\n".join(
             f"Project Title: {title}\nRequirements: {requirements or 'None given'}\n"

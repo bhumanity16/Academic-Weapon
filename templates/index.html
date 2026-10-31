@@ -1173,12 +1173,14 @@
         }
 
         // ---------- input collection & validation ----------
+        function currentClock() { return new Date().toTimeString().slice(0, 5); }
+
         function collectInput(mode) {
             const val = id => document.getElementById(id).value.trim();
             const today = localDateStr();
 
             if (mode === 'planner') {
-                const payload = { exam_date: val('input-date-planner'), subjects: collectSubjects() };
+                const payload = { exam_date: val('input-date-planner'), subjects: collectSubjects(), current_time: currentClock() };
                 if (!payload.exam_date) return [null, 'Pick your exam date.'];
                 if (payload.exam_date < today) return [null, "The exam date can't be in the past."];
                 if (!payload.subjects) return [null, 'Name at least one subject, like "Math".'];
@@ -1192,12 +1194,12 @@
                     if (!projects[i].deadline) return [null, `Pick a deadline for ${nameOf(i)}.`];
                     if (projects[i].deadline < today) return [null, `The deadline for ${nameOf(i)} can't be in the past.`];
                 }
-                return [{ projects }, null];
+                return [{ projects, current_time: currentClock() }, null];
             }
             const payload = {
                 tasks: val('input-tasks-booster'),
                 hours: val('input-hours-booster'),
-                current_time: new Date().toTimeString().slice(0, 5),
+                current_time: currentClock(),
                 end_time: val('input-end-booster'),
             };
             const hours = parseFloat(payload.hours);
