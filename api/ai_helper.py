@@ -12,7 +12,10 @@ load_dotenv()
 # Read from Vercel env so the model can be swapped without a code change
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 MAX_FIELD_CHARS = 2000
+# Room for 12 subjects, each with what's on its test
+MAX_SUBJECTS_CHARS = 4000
 MODES = ("planner", "milestone", "booster")
+MAX_PROJECTS = 5
 # A Daily Booster stop time earlier than this (in minutes) is treated as after midnight
 LATEST_PAST_MIDNIGHT = 5 * 60
 
@@ -37,12 +40,12 @@ def get_groq_client():
     return Groq(api_key=api_key)
 
 
-def _text(user_input, key, label):
+def _text(user_input, key, label, limit=MAX_FIELD_CHARS):
     value = str(user_input.get(key) or "").strip()
     if not value:
         raise InputError(f"{label} is required.")
-    if len(value) > MAX_FIELD_CHARS:
-        raise InputError(f"{label} is too long (max {MAX_FIELD_CHARS} characters).")
+    if len(value) > limit:
+        raise InputError(f"{label} is too long (max {limit} characters).")
     return value
 
 
@@ -60,6 +63,28 @@ def _future_date(user_input, key, label, today):
 def _pretty(d):
     """e.g. 'Friday, November 20, 2026' — computed in Python because LLMs get weekdays wrong."""
     return d.strftime("%A, %B %d, %Y").replace(" 0", " ")
+
+
+def _projects(user_input, today):
+    """The validated projects as (title, deadline, requirements). Requirements are optional."""
+    # A single project at the top level is what pages loaded before multi-project support send
+    raw = user_input.get("projects", [user_input])
+    if not isinstance(raw, list) or not raw:
+        raise InputError("Add at least one project.")
+    if len(raw) > MAX_PROJECTS:
+        raise InputError(f"Plan at most {MAX_PROJECTS} projects at a time.")
+    projects = []
+    for i, project in enumerate(raw, 1):
+        if not isinstance(project, dict):
+            raise InputError("Project details are invalid.")
+        name = "Project" if len(raw) == 1 else f"Project {i}"
+        title = _text(project, "title", f"{name} name")
+        deadline = _future_date(project, "deadline", f"{name} deadline", today)
+        requirements = str(project.get("requirements") or "").strip()
+        if len(requirements) > MAX_FIELD_CHARS:
+            raise InputError(f"{name} requirements are too long (max {MAX_FIELD_CHARS} characters).")
+        projects.append((title, deadline, requirements))
+    return projects
 
 
 def _clock(value):
@@ -97,8 +122,8 @@ def build_prompt(mode, user_input, today):
     )
 
     if mode == "planner":
-        exam_date = _future_date(user_input, "exam_date", "Exam start date", today)
-        subjects = _text(user_input, "subjects", "Subjects")
+        exam_date = _future_date(user_input, "exam_date", "Exam date", today)
+        subjects = _text(user_input, "subjects", "Subjects", MAX_SUBJECTS_CHARS)
         days_left = (exam_date - today).days
         grouping = (
             "Give one '### ' heading per day."
@@ -111,30 +136,40 @@ def build_prompt(mode, user_input, today):
             f"today until the day before the exam ({days_left} days). {grouping} "
             "Give more time to subjects with lower confidence (1 = weakest, 5 = strongest) and "
             "schedule review sessions before the exam. "
+            "Build each subject's tasks around what the student says is on the test, and cover every "
+            "topic they list. Where it says 'not given', use general study tasks for that subject and "
+            "never invent specific chapters, units or topics. "
             "The student is in school: on Monday-Friday schedule at most 2-3 hours of study, "
             "starting after 4 PM. Saturdays and Sundays can have up to 5 hours. "
             "Keep each day to 4-6 bullets. Only use study methods that fit each subject "
             "(for example, no DBQs outside history)."
         )
         user_content = (
-            f"Exam Start Date: {_pretty(exam_date)}\n"
+            f"Exam Date: {_pretty(exam_date)}\n"
             f"Subjects & Confidence:\n{subjects}"
         )
 
     elif mode == "milestone":
-        title = _text(user_input, "title", "Project title")
-        requirements = _text(user_input, "requirements", "Requirements")
-        deadline = _future_date(user_input, "deadline", "Deadline", today)
+        projects = _projects(user_input, today)
+        together = (
+            " The student has several projects at once: make one combined timeline in date order, "
+            "start each project with its name in every task, and spread the work so no day is overloaded."
+            if len(projects) > 1 else ""
+        )
         system_prompt = (
             "You are ScholarSync's Project Assistant. Break the project down into clear, incremental "
-            "micro-deadlines between today and the final deadline, grouped into phases. "
+            "micro-deadlines between today and the final deadline, grouped into phases."
+            + together +
+            " If a project lists no requirements, use sensible general steps for that kind of project "
+            "and never invent rules such as word counts or citation styles. "
             "Then suggest 2-3 starting resources. For resources, ONLY name well-known books, "
             "databases (JSTOR, Google Scholar, the school library), or useful search terms. "
             "Never invent specific articles, podcast episodes, websites, or URLs."
         )
-        user_content = (
-            f"Project Title: {title}\nRequirements: {requirements}\n"
+        user_content = "\n\n".join(
+            f"Project Title: {title}\nRequirements: {requirements or 'None given'}\n"
             f"Deadline: {_pretty(deadline)}"
+            for title, deadline, requirements in projects
         )
 
     else:  # booster

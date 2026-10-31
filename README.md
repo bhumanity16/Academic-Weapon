@@ -10,13 +10,13 @@ I once had just one exam the next week, and I underestimated how much studying i
 
 | Planner | You enter | You get |
 | --- | --- | --- |
-| **Study Planner** | Exam date and a 1–5 confidence level per subject | A study calendar from today until the exam. Weaker subjects get more time, with review sessions before the exam. |
-| **Milestone Matrix** | Project name, requirements and deadline | The project split into dated phases, plus real places to start researching (JSTOR, Google Scholar, the school library). |
-| **Daily Booster** | Today's tasks, free hours and a stop time | A Pomodoro-style schedule for the rest of today that never runs past your stop time. |
+| **Exam plan** | Exam date, plus what's on the test and a 1–5 confidence slider for each subject | A study calendar from today until the exam. Weaker subjects get more time, with review sessions before the exam. |
+| **Project plan** | One or more projects, each with a name, a deadline and optional requirements | One timeline that spreads the work across dated phases, plus real places to start researching (JSTOR, Google Scholar, the school library). |
+| **Today's plan** | Today's tasks, free hours and a stop time | A Pomodoro-style schedule for the rest of today that never runs past your stop time. |
 
 Every plan can go on a calendar, with no sign-in needed:
 
-- **My Calendar** is built into the site: a month view where you can tick tasks off or remove them. It's saved in your browser, not on a server.
+- **Your calendar** is built into the site: a month view where you can tick tasks off or remove them. It's saved in your browser, not on a server.
 - **Download (.ics)** exports the plan as a standard calendar file that opens in Apple Calendar, Google Calendar or Outlook.
 - **Google Calendar sync** is optional: if you sign in, a plan can be sent straight to your Google Calendar.
 
@@ -24,7 +24,7 @@ Every plan can go on a calendar, with no sign-in needed:
 
 - **Backend:** Python and Flask, running as a serverless function on Vercel (`api/index.py`).
 - **AI:** the Groq API (`api/ai_helper.py`). The model can be swapped with the `GROQ_MODEL` environment variable.
-- **Frontend:** a single page (`templates/index.html`) using Tailwind CSS. Plans come back as Markdown, are rendered with marked, and are sanitized with DOMPurify.
+- **Frontend:** a single page (`templates/index.html`) with custom CSS. Plans come back as Markdown, are rendered with marked, and are sanitized with DOMPurify.
 - **Calendar:** a second AI call turns a finished plan into dated events (JSON), and the server checks every date and time before returning them. The page stores the events in `localStorage` and builds `.ics` files itself.
 - **Google:** OAuth 2.0 sign-in (with PKCE and state checks) and the Calendar API.
 

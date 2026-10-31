@@ -3,524 +3,1040 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ScholarSync turns exam dates, big projects and today's to-do list into realistic study schedules for high school students, and can add them to Google Calendar.">
-    <meta name="theme-color" content="#09090b">
-    <meta property="og:title" content="ScholarSync — AI Study Planner">
-    <meta property="og:description" content="Turn exam dates, projects and to-do lists into realistic study schedules, then add them to Google Calendar.">
+    <meta name="description" content="ScholarSync turns exam dates, big projects and today's to-do list into realistic study schedules for high school students, and can add them to any calendar.">
+    <meta name="theme-color" content="#E9EDF5">
+    <meta property="og:title" content="ScholarSync, an AI study planner">
+    <meta property="og:description" content="See how much work you actually have, before you make plans you'll have to cancel.">
     <meta property="og:type" content="website">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%234f46e5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='18' fill='white'%3ES%3C/text%3E%3C/svg%3E">
-    <title>ScholarSync — AI Study Planner</title>
-    <!-- Play CDN is fine for a prototype; build Tailwind with its CLI for production -->
-    <script src="https://cdn.tailwindcss.com/3.4.5"></script>
+    <title>ScholarSync: AI Study Planner</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231E2A78'/%3E%3Crect x='4' y='23' width='24' height='5' fill='%23FFF27A'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='20' fill='%23FBFCFF'%3ES%3C/text%3E%3C/svg%3E">
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Zilla+Slab:wght@500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            color-scheme: light;
+            --desk: #E9EDF5;
+            --tab: #D5DBEA;
+            --paper: #FBFCFF;
+            --ink: #1E2A78;
+            --text: #1B1F3B;
+            --muted: #4C5273;
+            --rule: #CFDBEF;
+            --red-pen: #D42F3C;
+            --margin-line: #E2606A;
+            --yellow: #FFF27A;
+            --pink: #FFB8D9;
+            --green: #B5F2B0;
+            --line: 32px;
+            --margin: 20px;
+            --pad-left: 32px;
+            --pad-right: 16px;
+        }
+        @media (min-width: 720px) {
+            :root { --margin: 56px; --pad-left: 84px; --pad-right: 48px; }
+        }
+
+        * { box-sizing: border-box; }
+        .hidden { display: none !important; }
+        .visually-hidden {
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip-path: inset(50%); white-space: nowrap;
+        }
+
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(8px) scale(0.98); }
-            to { opacity: 1; transform: none; }
-        }
-        .animate-fade-in { animation: fade-in 0.2s ease-out; }
-
-        /* Custom Scrollbar Styles */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #09090b; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
-
-        /* Markdown plan styling: each "### Day" heading becomes a card header */
-        .markdown-content h1, .markdown-content h2 {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: #f4f4f5;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-        }
-        .markdown-content h3 {
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: #22d3ee;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            background: #18181b;
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            border-left: 4px solid #22d3ee;
-            letter-spacing: -0.025em;
-        }
-        .markdown-content h4 { font-weight: 700; color: #e4e4e7; margin: 1.25rem 0 0.5rem; }
-        .markdown-content ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
-        .markdown-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
-        .markdown-content h3 + ul, .markdown-content h3 + ol {
-            background-color: rgba(24, 24, 27, 0.4);
-            border: 1px solid #27272a;
-            border-radius: 1rem;
-            padding: 1.25rem 1.25rem 1.25rem 2.25rem;
-            margin-bottom: 2rem;
-            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.2);
-        }
-        .markdown-content li {
-            margin-bottom: 0.75rem;
-            color: #e4e4e7;
+            margin: 0;
+            min-height: 100vh;
+            background: var(--desk);
+            color: var(--text);
+            font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
+            font-size: 16px;
             line-height: 1.6;
         }
-        .markdown-content li:last-child { margin-bottom: 0; }
-        .markdown-content strong { color: #f4f4f5; font-weight: 600; }
-        .markdown-content p { margin-bottom: 1rem; color: #d4d4d8; line-height: 1.75; }
-        .markdown-content a { color: #22d3ee; text-decoration: underline; }
-        .markdown-content table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; font-size: 0.875rem; }
-        .markdown-content th, .markdown-content td { border: 1px solid #27272a; padding: 0.5rem 0.75rem; text-align: left; }
-        .markdown-content th { background: #18181b; color: #f4f4f5; }
+        h1, h2, h3 { font-family: 'Zilla Slab', Georgia, serif; color: var(--ink); margin: 0; }
+        h2 { font-size: 28px; line-height: 40px; font-weight: 700; }
+        h3 { font-size: 20px; line-height: var(--line); font-weight: 700; }
+        p { margin: 0; }
+        a { color: var(--ink); }
+        button, input, textarea { font: inherit; color: inherit; }
+        button { cursor: pointer; }
+        :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-        /* Keep the native date picker icon visible on the dark background */
-        input[type="date"], input[type="time"] { color-scheme: dark; }
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            opacity: 0.75;
-            transition: opacity 0.15s ease-in-out;
-            padding: 4px;
-            border-radius: 6px;
+        /* ---------- binder: masthead, tabs and the sheet of paper ---------- */
+        .binder { max-width: 1040px; margin: 0 auto; }
+        .masthead {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 16px var(--pad-right) 12px 16px;
         }
-        input[type="date"]::-webkit-calendar-picker-indicator:hover {
-            opacity: 1;
-            background-color: rgba(255, 255, 255, 0.1);
+        @media (min-width: 720px) { .masthead { padding-left: var(--margin); padding-right: 0; } }
+        .brand {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: none; border: 0; padding: 0;
+            font-family: 'Zilla Slab', Georgia, serif; font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--ink);
+        }
+        .brand-note {
+            display: flex; align-items: center; justify-content: center; flex: none;
+            width: 36px; height: 36px; background: var(--yellow); color: var(--red-pen); font-size: 25px;
+            transform: rotate(-7deg); box-shadow: 2px 3px 0 rgba(30, 42, 120, .22);
+            border-bottom-right-radius: 12px 7px;
+            animation: note-in .5s cubic-bezier(.3, 1.6, .5, 1) backwards; transition: transform .2s cubic-bezier(.3, 1.8, .5, 1);
+        }
+        .brand:hover .brand-note { transform: rotate(5deg) scale(1.1); }
+        @keyframes note-in { from { transform: rotate(-40deg) scale(.2); opacity: 0; } }
+        .brand-sync {
+            padding: 0 4px 0 1px;
+            background: linear-gradient(var(--yellow), var(--yellow)) no-repeat 0 72% / 100% 62%;
+            animation: brand-swipe .55s ease-out .45s backwards;
+        }
+        @keyframes brand-swipe { from { background-size: 0 62%; } }
+        .account { display: flex; align-items: center; gap: 12px; font-size: 14px; min-width: 0; }
+        .account img { height: 24px; width: 24px; border-radius: 50%; }
+        .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 10rem; }
+        .sign-in {
+            display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+            background: var(--paper); border: 1.5px solid var(--ink); border-radius: 4px;
+            padding: 6px 12px; font-size: 14px; font-weight: 700; text-decoration: none;
+        }
+        .sign-in:hover { background: var(--yellow); }
+        .sign-in svg { height: 14px; width: 14px; }
+        .sign-in .short { display: inline; }
+        .sign-in .long { display: none; }
+        @media (min-width: 720px) {
+            .sign-in .short { display: none; }
+            .sign-in .long { display: inline; }
+        }
+
+        .tabs { display: flex; gap: 4px; padding-left: 16px; }
+        @media (min-width: 720px) { .tabs { padding-left: var(--margin); } }
+        /* Sticky index tabs poking out from behind the page; the page's top edge takes the open tab's colour */
+        body { --tab-color: #FFE066; }
+        body[data-view="demo"] { --tab-color: #9FD8FF; }
+        body[data-view="calendar"] { --tab-color: #FFB39E; }
+        .tab {
+            position: relative; border: 0; border-radius: 3px 3px 0 0; color: var(--text);
+            padding: 7px 18px 12px; margin-bottom: -6px; font-size: 15px;
+            box-shadow: 0 -1px 3px rgba(30, 42, 120, .18);
+            transition: transform .18s cubic-bezier(.3, 1.6, .5, 1);
+            animation: tab-in .45s cubic-bezier(.3, 1.5, .5, 1) backwards; animation-delay: calc(var(--t) * 90ms + 150ms);
+            transform: translateY(5px);
+        }
+        @keyframes tab-in { from { transform: translateY(44px); } }
+        .tab[data-view="home"] { background: #FFE066; --t: 0; }
+        .tab[data-view="demo"] { background: #9FD8FF; --t: 1; }
+        .tab[data-view="calendar"] { background: #FFB39E; --t: 2; }
+        .tab:hover { transform: translateY(1px); }
+        .tab[aria-current="page"] { transform: translateY(-3px); font-weight: 700; }
+
+        .sheet {
+            position: relative;
+            z-index: 1;
+            border-top: 5px solid var(--tab-color);
+            transition: border-color .2s;
+            min-height: 70vh;
+            background-color: var(--paper);
+            background-image: linear-gradient(to right,
+                transparent calc(var(--margin) - 1px), var(--margin-line) calc(var(--margin) - 1px),
+                var(--margin-line) var(--margin), transparent var(--margin));
+            padding: 32px var(--pad-right) 48px var(--pad-left);
+        }
+        /* Ruled area: bleeds to the sheet's edges, and text sits on the lines at 32px line height */
+        .ruled {
+            margin-left: calc(var(--pad-left) * -1);
+            margin-right: calc(var(--pad-right) * -1);
+            padding-left: var(--pad-left);
+            padding-right: var(--pad-right);
+            line-height: var(--line);
+            background-image: repeating-linear-gradient(to bottom,
+                transparent 0, transparent calc(var(--line) - 1px),
+                var(--rule) calc(var(--line) - 1px), var(--rule) var(--line));
+            background-position: 0 -7px;
+        }
+        .measure { max-width: 66ch; }
+        section { margin-top: 56px; }
+        .section-note { color: var(--muted); margin-top: 8px; }
+
+        /* ---------- home ---------- */
+        html, body { overflow-x: clip; }
+        /* Scroll-driven hero: --stage is pinned while the track scrolls; JS sets everything from scroll position */
+        .hero-track { margin-top: -32px; }
+        .hero-track.pinned { height: 340vh; }
+        .hero-stage { padding-top: 32px; padding-bottom: 40px; }
+        .pinned .hero-stage {
+            position: sticky; top: 0; height: 100vh; height: 100svh; padding-top: 12px; padding-bottom: 16px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .hero-title { font-size: clamp(1.75rem, 8vw, 3.75rem); line-height: 64px; font-weight: 700; white-space: nowrap; }
+        .struck { position: relative; display: inline-block; }
+        .struck::after {
+            content: ''; position: absolute; left: -0.08em; right: -0.08em; top: 54%;
+            height: 0.08em; min-height: 3px; background: var(--red-pen); border-radius: 2px;
+            transform: rotate(-1deg) scaleX(var(--strike, 0)); transform-origin: left center;
+        }
+        .hero-title-word { display: inline-block; animation: word-up .5s cubic-bezier(.2, .9, .3, 1.1) backwards; animation-delay: calc(var(--i) * 70ms + 80ms); }
+        @keyframes word-up { from { opacity: 0; transform: translateY(18px); } }
+
+        .hero-lines { display: grid; min-height: 64px; }
+        .hero-lines p {
+            grid-area: 1 / 1; font-size: 19px; font-weight: 700; color: var(--ink); opacity: 0;
+            transform: translateY(10px); transition: opacity .25s, transform .25s; max-width: 40rem;
+        }
+        .hero-lines p.on { opacity: 1; transform: none; }
+
+        .levels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; line-height: 1.3; font-size: 14px; transition: opacity .25s; }
+        .levels span {
+            padding: 3px 10px; border: 2px solid transparent; border-radius: 3px; color: var(--text);
+            transition: border-color .2s, transform .2s, box-shadow .2s, opacity .2s; opacity: .55;
+        }
+        .levels [data-level="high"] { background: var(--green); }
+        .levels [data-level="mid"] { background: var(--yellow); }
+        .levels [data-level="low"] { background: var(--pink); }
+        .levels span.on { opacity: 1; border-color: var(--ink); font-weight: 700; transform: scale(1.06) rotate(-1deg); box-shadow: 2px 2px 0 var(--ink); }
+        .levels.off { opacity: 0; }
+
+        .week { display: grid; gap: 5px; margin: 12px 0 0; line-height: 1.25; font-size: 13px; }
+        .week-day { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px; align-items: start; min-height: 24px; }
+        .week-tasks { display: flex; flex-wrap: wrap; gap: 3px; }
+        .week-name { font-weight: 700; color: var(--ink); line-height: 24px; font-size: 13px; }
+        .mark { padding: 3px 7px; color: var(--text); will-change: transform, opacity; white-space: nowrap; }
+        .mark small { display: none; }
+        .mark-planner { background: var(--yellow); }
+        .mark-milestone { background: var(--pink); }
+        .mark-booster { background: var(--green); }
+        .block-high { background: var(--green); }
+        .block-mid { background: var(--yellow); }
+        .block-low { background: var(--pink); }
+        .mark-plans { background: var(--paper); border: 1.5px solid var(--ink); padding: 1.5px 5.5px; font-weight: 700; color: var(--ink); }
+        .mark-exam { background: var(--ink); color: var(--paper); font-weight: 700; }
+        .mark-exam small { display: inline; margin-left: 6px; font-size: 11px; font-weight: 400; color: #C9D2F2; }
+        @media (min-width: 720px) {
+            .week { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; font-size: 14px; line-height: 1.3; min-height: 212px; align-items: start; }
+            .week-day { grid-template-columns: minmax(0, 1fr); gap: 0; }
+            .week-tasks { display: grid; gap: 4px; }
+            .week-name { line-height: var(--line); font-size: 14px; }
+            .mark { padding: 3px 8px; white-space: normal; }
+            .mark small { display: block; font-size: 12px; color: var(--muted); }
+            .mark-plans { padding: 1.5px 6.5px; }
+            .mark-exam { padding: 8px; }
+            .mark-exam small { display: block; margin-left: 0; font-size: 12px; color: #C9D2F2; }
+        }
+        .week-total { margin: 12px 0 14px; font-size: 18px; line-height: 1.5; color: var(--ink); }
+        .week-total b { display: inline-block; white-space: nowrap; font-family: 'Zilla Slab', Georgia, serif; font-size: 28px; line-height: 1.2; background: var(--yellow); padding: 0 8px; color: var(--text); font-variant-numeric: tabular-nums; }
+        .hero-actions { display: flex; align-items: center; gap: 16px; }
+        .scroll-cue { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); line-height: 1.4; transition: opacity .2s; }
+        .scroll-cue i { display: block; width: 9px; height: 9px; border-right: 2px solid var(--red-pen); border-bottom: 2px solid var(--red-pen); transform: rotate(45deg); animation: nudge 1.1s ease-in-out infinite; }
+        @keyframes nudge { 50% { transform: translateY(5px) rotate(45deg); } }
+        .scroll-cue.off { opacity: 0; }
+        .story-word { transition: opacity .15s; }
+
+        .btn {
+            display: inline-block; border-radius: 4px; border: 1.5px solid var(--ink);
+            padding: 8px 18px; font-size: 15px; font-weight: 700; line-height: 1.4; text-decoration: none;
+            transition: background-color .12s;
+        }
+        .btn:active:not(:disabled) { transform: translateY(1px); }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-primary { background: var(--ink); color: var(--paper); }
+        .btn-primary:hover:not(:disabled) { background: #2D3C9C; }
+        .btn-secondary { background: var(--paper); color: var(--ink); }
+        .btn-secondary:hover:not(:disabled) { background: var(--yellow); }
+        .btn-small { padding: 4px 10px; font-size: 13px; }
+        .link-btn {
+            background: none; border: 0; padding: 0; color: var(--ink);
+            text-decoration: underline; text-underline-offset: 3px; font-size: 14px;
+        }
+        .link-btn:hover { color: var(--red-pen); }
+
+        .story { font-family: 'Zilla Slab', Georgia, serif; font-weight: 500; font-size: 21px; line-height: 1.5; margin-top: 12px; }
+
+        .rows { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+        .rows > li { border-bottom: 1px solid var(--rule); }
+        .planner-row {
+            display: grid; gap: 4px; width: 100%; text-align: left;
+            background: none; border: 0; padding: 14px 0;
+        }
+        .planner-row:hover .planner-name { text-decoration: underline; text-underline-offset: 3px; }
+        .planner-name { justify-self: start; font-weight: 700; padding: 0 8px; margin-left: -8px; }
+        .planner-row span:last-child { color: var(--muted); }
+        @media (min-width: 720px) { .planner-row { grid-template-columns: 170px minmax(0, 1fr); gap: 16px; } }
+
+        .steps { margin: 16px 0 0; padding-left: 24px; }
+        .steps li { padding: 4px 0 4px 4px; }
+        .steps li::marker { font-family: 'Zilla Slab', Georgia, serif; font-weight: 700; color: var(--ink); }
+
+        /* ---------- how it's built: objects on a desk ---------- */
+        .flow { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 28px; }
+        .flow-step { position: relative; background: #FFFFFF; border: 1.5px solid var(--ink); padding: 10px 12px; line-height: 1.35; }
+        .flow-step b { display: block; font-family: 'Zilla Slab', Georgia, serif; font-size: 18px; color: var(--ink); }
+        .flow-step span { font-size: 14px; color: var(--muted); }
+        .flow-step:nth-child(2) { background: var(--yellow); }
+        .flow-step:nth-child(3) { background: var(--pink); }
+        .flow-step:nth-child(4) { background: var(--green); }
+        .flow-step:nth-child(n+2) span { color: var(--text); }
+        .flow-step:not(:last-child)::after {
+            content: ''; position: absolute; left: 24px; top: 100%; width: 2px; height: 26px; background: var(--red-pen);
+        }
+        .flow-step:not(:first-child)::before {
+            content: ''; position: absolute; left: 20px; top: -8px; width: 0; height: 0;
+            border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--red-pen);
+        }
+        @media (min-width: 720px) {
+            .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
+            .flow-step:not(:last-child)::after { left: 100%; top: 50%; width: 26px; height: 2px; }
+            .flow-step:not(:first-child)::before {
+                left: -8px; top: calc(50% - 4px);
+                border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--red-pen); border-right: 0;
+            }
+        }
+
+        .desk { display: grid; gap: 28px; margin-top: 36px; }
+        @media (min-width: 720px) {
+            .desk { grid-template-columns: 5fr 6fr; gap: 32px 28px; align-items: start; }
+            .graph { transform: rotate(-0.8deg); }
+            .checklist { transform: rotate(0.7deg); }
+            .desk .vault { grid-column: 1; grid-row: 2; }
+            .desk .day-card { grid-column: 2; grid-row: 1; }
+        }
+        .desk-item { min-width: 0; }
+        .desk-item h3 { margin-bottom: 10px; line-height: 1.25; }
+        .desk-item p { color: var(--muted); }
+
+        .graph {
+            padding: 18px; background-color: #FFFFFF; border: 1px solid #AFC4E4;
+            box-shadow: 3px 4px 0 rgba(30, 42, 120, .14);
+            background-image:
+                linear-gradient(#DCE7F6 1px, transparent 1px),
+                linear-gradient(90deg, #DCE7F6 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+        .sums { margin: 0 0 14px; font-family: 'Zilla Slab', Georgia, serif; font-size: 18px; color: var(--ink); }
+        .sums > div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 3px 0; }
+        .sums dt { font-weight: 500; }
+        .sums dd { margin: 0; font-weight: 700; text-align: right; white-space: nowrap; }
+        .sum-total { border-top: 2px solid var(--ink); margin-top: 3px; }
+        .swipe {
+            padding: 0 6px; color: var(--text);
+            background: linear-gradient(var(--yellow), var(--yellow)) no-repeat left / 100% 100%;
+        }
+        .graph p { color: var(--text); }
+
+        .day-card label { margin: 12px 0 0; }
+        .day-strip {
+            position: relative; height: 62px; margin-top: 14px;
+            background: #FFFFFF; border: 1.5px solid var(--ink); overflow: hidden;
+        }
+        .day-school {
+            position: absolute; inset: 0 auto 0 0; width: 20%;
+            display: flex; align-items: center; padding: 0 4px;
+            font-size: 11px; line-height: 1.2; color: var(--muted);
+            background: repeating-linear-gradient(135deg, #E4E8F2 0 5px, #F5F7FB 5px 10px);
+        }
+        .day-block {
+            position: absolute; top: 8px; bottom: 8px; padding: 2px 5px; overflow: hidden;
+            font-size: 12px; line-height: 1.2; color: var(--text); transform-origin: left center;
+            transition: opacity .2s, background-color .2s;
+        }
+        .day-block.cut {
+            background: transparent !important; outline: 1.5px dashed var(--red-pen); outline-offset: -2px;
+            text-decoration: line-through; color: var(--red-pen);
+        }
+        .day-stop { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--red-pen); transition: left .12s; z-index: 1; }
+        .day-ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .day-slider { display: block; width: 100%; margin: 4px 0 6px; accent-color: var(--red-pen); cursor: pointer; }
+        .day-result { min-height: 24px; font-weight: 700; color: var(--ink) !important; }
+
+        .vault-boxes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-bottom: 12px; }
+        .vault-box { position: relative; min-height: 148px; padding: 10px; border: 1.5px solid var(--ink); background: #FFFFFF; overflow: hidden; line-height: 1.3; }
+        .vault-box b { display: block; font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+        .vault-box ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+        .vault-box li { padding: 3px 7px; font-size: 14px; color: var(--text); }
+        .vault-empty { border-style: dashed; background: transparent; }
+        .vault-empty p { font-size: 13px; }
+        .stamp {
+            position: absolute; right: 8px; bottom: 12px; padding: 3px 8px;
+            border: 3px solid var(--red-pen); border-radius: 4px; color: var(--red-pen);
+            font-family: 'Zilla Slab', Georgia, serif; font-weight: 700; font-size: 16px; white-space: nowrap;
+            transform: rotate(-9deg);
+        }
+
+        .checklist { padding: 18px; background: #FFFFFF; border: 1px solid #AFC4E4; box-shadow: 3px 4px 0 rgba(30, 42, 120, .14); }
+        .checklist ul { list-style: none; margin: 0; padding: 0; }
+        .checklist li { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--rule); line-height: 1.4; }
+        .checklist li:last-child { border-bottom: 0; padding-bottom: 0; }
+        .checklist svg { flex: none; width: 26px; height: 22px; fill: none; stroke: var(--red-pen); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+        .checklist path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+
+        /* ---------- calendar motion: played by renderCalendar's fx argument, never on a plain re-render ---------- */
+        .cal-fx-open .cal-cell > *, .cal-fx-next .cal-cell > *, .cal-fx-prev .cal-cell > * {
+            animation: cell-in .32s ease-out backwards; animation-delay: calc(var(--d) * 24ms);
+        }
+        @keyframes cell-in { from { opacity: 0; transform: translateY(8px) scale(.9); } }
+        .cal-fx-next { animation: slide-next .28s ease-out; }
+        .cal-fx-prev { animation: slide-prev .28s ease-out; }
+        @keyframes slide-next { from { transform: translateX(26px); } }
+        @keyframes slide-prev { from { transform: translateX(-26px); } }
+        .cal-fx-open .cal-title, .cal-fx-next .cal-title, .cal-fx-prev .cal-title,
+        .cal-fx-open .cal-bar, .cal-fx-next .cal-bar, .cal-fx-prev .cal-bar {
+            animation: swipe .38s ease-out backwards; animation-delay: calc(var(--d) * 24ms + 180ms);
+        }
+        @keyframes swipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+        .cal-fx-open .cal-cell.today .cal-num { animation: circle-in .5s cubic-bezier(.3, 1.6, .5, 1) .25s backwards; }
+        @keyframes circle-in { from { transform: scale(0) rotate(-120deg); } }
+        .cal-fx-day .cal-cell.selected .cal-num { animation: pop .28s cubic-bezier(.3, 1.8, .5, 1); }
+        @keyframes pop { from { transform: scale(.6); } }
+        .list-in > li { animation: item-in .28s ease-out backwards; animation-delay: calc(var(--i) * 50ms); }
+        @keyframes item-in { from { opacity: 0; transform: translateX(-12px); } }
+        .event.leaving { animation: item-out .18s ease-in forwards; }
+        @keyframes item-out { to { opacity: 0; transform: translateX(24px); } }
+        .event-title.just-done { animation: pen .32s ease-out; }
+        @keyframes pen { from { background-size: 0 2px; } to { background-size: 100% 2px; } }
+        .event.just-done-row input { animation: pop .28s cubic-bezier(.3, 1.8, .5, 1); }
+        .day-stamp.stamp-in { animation: thump .3s cubic-bezier(.3, 1.4, .5, 1) .28s backwards; }
+        @keyframes thump {
+            from { opacity: 0; transform: rotate(-5deg) scale(2.4); }
+            to { opacity: 1; transform: rotate(-5deg) scale(1); }
+        }
+
+        /* Scroll animations: only armed when JS has set .can-animate, so content is never stuck hidden */
+        .can-animate [data-reveal]:not(.in-view) .flow-step { opacity: 0; transform: translateY(10px); }
+        .can-animate [data-reveal]:not(.in-view) .flow-step::after,
+        .can-animate [data-reveal]:not(.in-view) .flow-step::before { opacity: 0; }
+        .can-animate .flow-step { transition: opacity .35s, transform .35s; }
+        .can-animate .flow-step:nth-child(2) { transition-delay: .18s; }
+        .can-animate .flow-step:nth-child(3) { transition-delay: .36s; }
+        .can-animate .flow-step:nth-child(4) { transition-delay: .54s; }
+        .can-animate .flow-step::after, .can-animate .flow-step::before { transition: opacity .3s .5s; }
+
+        .can-animate .rows > li, .can-animate .steps > li { transition: opacity .4s, transform .4s; }
+        .can-animate [data-reveal]:not(.in-view).rows > li, .can-animate [data-reveal]:not(.in-view).steps > li,
+        .can-animate .rows[data-reveal]:not(.in-view) > li, .can-animate .steps[data-reveal]:not(.in-view) > li { opacity: 0; transform: translateX(-24px); }
+        .can-animate .rows > li:nth-child(2), .can-animate .steps > li:nth-child(2) { transition-delay: .15s; }
+        .can-animate .rows > li:nth-child(3), .can-animate .steps > li:nth-child(3) { transition-delay: .3s; }
+        .can-animate .rows .planner-name { transition: clip-path .4s .3s; clip-path: inset(0 0 0 0); }
+        .can-animate .rows[data-reveal]:not(.in-view) .planner-name { clip-path: inset(0 100% 0 0); }
+
+        .can-animate [data-reveal]:not(.in-view) .sums > div { opacity: 0; transform: translateX(-8px); }
+        .can-animate .sums > div { transition: opacity .3s, transform .3s; }
+        .can-animate .sums > div:nth-child(2) { transition-delay: .25s; }
+        .can-animate .sums > div:nth-child(3) { transition-delay: .5s; }
+        .can-animate .sums > div:nth-child(4) { transition-delay: .75s; }
+        .can-animate [data-reveal]:not(.in-view) .swipe { background-size: 0 100%; }
+        .can-animate .swipe { transition: background-size .4s .9s; }
+
+        .can-animate .day-card.in-view .day-block { animation: grow .45s ease-out backwards; }
+        .can-animate .day-card:not(.in-view) .day-block { visibility: hidden; }
+        @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+        .can-animate .vault:not(.in-view) .stamp { opacity: 0; }
+        .can-animate .vault.in-view .stamp { animation: stamp .3s cubic-bezier(.3, 1.4, .5, 1) .5s backwards; }
+        @keyframes stamp {
+            from { opacity: 0; transform: rotate(-9deg) scale(2.2); }
+            to { opacity: 1; transform: rotate(-9deg) scale(1); }
+        }
+
+        .can-animate .checklist:not(.in-view) path { stroke-dashoffset: 1; }
+        .can-animate .checklist path { transition: stroke-dashoffset .35s ease-out; }
+        .can-animate .checklist li:nth-child(1) path { transition-delay: .2s; }
+        .can-animate .checklist li:nth-child(2) path { transition-delay: .5s; }
+        .can-animate .checklist li:nth-child(3) path { transition-delay: .8s; }
+        .can-animate .checklist li:nth-child(4) path { transition-delay: 1.1s; }
+
+        .closing-notes { display: grid; gap: 14px; margin-top: 18px; }
+        @media (min-width: 720px) { .closing-notes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; } }
+        .closing-note {
+            display: grid; gap: 4px; align-content: start; min-height: 96px; padding: 16px; border: 0; text-align: left;
+            color: var(--text); line-height: 1.35; box-shadow: 3px 4px 0 rgba(30, 42, 120, .2);
+            border-bottom-right-radius: 18px 10px; transition: transform .18s cubic-bezier(.3, 1.6, .5, 1), box-shadow .18s;
+        }
+        .closing-note b { font-family: 'Zilla Slab', Georgia, serif; font-size: 22px; color: var(--ink); }
+        .closing-note:nth-child(1) { transform: rotate(-1.2deg); }
+        .closing-note:nth-child(2) { transform: rotate(.8deg); }
+        .closing-note:nth-child(3) { transform: rotate(-.6deg); }
+        .closing-note:hover { transform: translateY(-4px) rotate(0); box-shadow: 5px 8px 0 rgba(30, 42, 120, .2); }
+        .closing-note:active { transform: translateY(1px) rotate(0); }
+        .can-animate .closing[data-reveal]:not(.in-view) .closing-note { opacity: 0; transform: translateY(26px) rotate(-5deg); }
+        .can-animate .closing.in-view .closing-note { animation: note-drop .45s cubic-bezier(.3, 1.4, .5, 1) backwards; }
+        .can-animate .closing.in-view .closing-note:nth-child(2) { animation-delay: .12s; }
+        .can-animate .closing.in-view .closing-note:nth-child(3) { animation-delay: .24s; }
+        @keyframes note-drop { from { opacity: 0; transform: translateY(26px) rotate(-5deg); } }
+
+        /* ---------- planner ---------- */
+        .view-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+        .view-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: var(--muted); align-items: baseline; }
+
+        .mode-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; }
+        .mode-tab {
+            background: none; border: 1.5px solid var(--ink); border-radius: 4px;
+            padding: 6px 14px; font-size: 15px; color: var(--ink);
+        }
+        .mode-tab:hover { background: var(--desk); }
+        .mode-tab[aria-selected="true"] { font-weight: 700; color: var(--text); }
+        .mode-tab[data-mode-tab="planner"][aria-selected="true"] { background: var(--yellow); }
+        .mode-tab[data-mode-tab="milestone"][aria-selected="true"] { background: var(--pink); }
+        .mode-tab[data-mode-tab="booster"][aria-selected="true"] { background: var(--green); }
+
+        .fields { display: grid; gap: 16px; margin-top: 16px; }
+        .plan-card { margin-top: 18px; }
+        .plan-card-exam { --card-color: #FFF27A; --tilt: -.5deg; }
+        .plan-card-today { --card-color: #B5F2B0; --tilt: .5deg; }
+        .plan-card .project-head { padding: 8px 14px; }
+        .plan-card-exam .project-body { grid-template-columns: minmax(0, 1fr); }
+        @media (min-width: 720px) { .plan-card .today-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+        .exam-date-field { max-width: 260px; }
+        /* The browser's own time popup can't be themed, so typing and arrow keys set the time on desktop */
+        input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
+
+        .date-field {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px;
+            background: #FFFFFF; border: 1.5px solid var(--ink); border-radius: 3px; padding: 9px 10px; font-size: 16px; text-align: left;
+        }
+        .date-field:hover { background: #F6F8FD; }
+        .date-field.empty .date-field-text { color: #6B7192; }
+        .date-field svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+
+        .picker {
+            position: absolute; z-index: 40; width: min(304px, calc(100vw - 16px)); padding: 10px 12px 8px;
+            background: var(--paper); border: 1.5px solid var(--ink); border-top: 6px solid var(--red-pen);
+            box-shadow: 4px 5px 0 rgba(30, 42, 120, .22); transform-origin: top left;
+            animation: picker-in .18s cubic-bezier(.3, 1.4, .5, 1);
+        }
+        @keyframes picker-in { from { opacity: 0; transform: translateY(-6px) rotate(-1.5deg) scale(.97); } }
+        .picker-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+        .picker-title { font-family: 'Zilla Slab', Georgia, serif; font-weight: 700; font-size: 18px; color: var(--ink); }
+        .picker-nav { width: 34px; height: 34px; background: none; border: 1.5px solid var(--ink); border-radius: 3px; color: var(--ink); font-size: 18px; line-height: 1; }
+        .picker-nav:hover:not(:disabled) { background: var(--yellow); }
+        .picker-nav:disabled { opacity: .3; cursor: not-allowed; }
+        .picker-days, .picker-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .picker-days { font-size: 12px; font-weight: 700; color: var(--ink); text-align: center; padding: 2px 0 4px; }
+        .picker-grid { gap: 1px; background: #AFC4E4; border: 1px solid #AFC4E4; }
+        .picker-grid.next { animation: slide-next .2s ease-out; }
+        .picker-grid.prev { animation: slide-prev .2s ease-out; }
+        .picker-day { display: flex; align-items: center; justify-content: center; height: 36px; padding: 0; background: var(--paper); border: 0; font-size: 14px; color: var(--text); transition: background-color .1s; }
+        .picker-day:hover:not(:disabled) { background: #FFF9C4; }
+        .picker-day.outside { background: #F0F2F8; color: var(--muted); }
+        .picker-day:disabled { color: #A9AEC4; background: #F5F6FA; cursor: not-allowed; }
+        .picker-day span { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; }
+        .picker-day.today span { border: 2px solid var(--red-pen); color: var(--red-pen); font-weight: 700; }
+        .picker-day.selected { background: var(--yellow); font-weight: 700; box-shadow: inset 0 0 0 2px var(--ink); color: var(--text); }
+        .picker-foot { display: flex; justify-content: space-between; padding-top: 8px; }
+
+        .subjects-label {
+            display: block; margin: 6px 0 14px; padding-top: 14px; border-top: 1.5px solid var(--ink);
+            font-family: 'Zilla Slab', Georgia, serif; font-weight: 700; font-size: 21px; line-height: 1.25; color: var(--ink);
+        }
+        .subject-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
+        .subject-row { display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 8px; align-items: end; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+        .subject-row:last-child { border-bottom: 0; padding-bottom: 0; }
+        .subject-row.adding { animation: item-in .28s ease-out; }
+        .subject-row label { font-size: 13px; margin: 0; color: var(--muted); }
+        .subject-row label input { margin-top: 4px; font-size: 16px; font-weight: 400; color: var(--text); }
+        .subject-topics-wrap { grid-column: 1 / -1; }
+        .subject-slider-wrap { grid-column: 1 / -1; display: grid; grid-template-columns: 12px minmax(0, 1fr) 12px; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; color: var(--muted); }
+        .subject-slider { width: 100%; height: 28px; margin: 0; cursor: pointer; accent-color: var(--level-strong); }
+        /* Lighter at rest; full colour while it's being used */
+        .subject-slider, .day-slider { opacity: .5; transition: opacity .15s; }
+        .subject-slider:hover, .day-slider:hover { opacity: .75; }
+        .subject-slider:active, .day-slider:active, .subject-slider:focus-visible, .day-slider:focus-visible { opacity: 1; }
+        .subject-note {
+            grid-column: 1 / -1; padding: 8px 12px; min-height: 44px; display: flex; align-items: center; gap: 8px;
+            background: var(--level-note); color: var(--text); line-height: 1.3; font-size: 15px;
+            transform: rotate(-.5deg); box-shadow: 2px 2px 0 rgba(30, 42, 120, .16); border-bottom-right-radius: 12px 6px;
+            transition: background-color .15s;
+        }
+        .subject-note b { font-family: 'Zilla Slab', Georgia, serif; font-size: 18px; color: var(--ink); }
+        .subject-remove { grid-column: 2; grid-row: 1; width: 36px; height: 36px; background: none; border: 0; color: var(--muted); font-size: 22px; line-height: 1; }
+        .subject-remove:hover { color: var(--red-pen); }
+        @media (min-width: 720px) {
+            .subject-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 36px; }
+            .subject-name-wrap { grid-column: 1; grid-row: 1; }
+            .subject-topics-wrap { grid-column: 2 / 4; grid-row: 1; }
+            .subject-remove { grid-column: 4; grid-row: 1; }
+            .subject-slider-wrap { grid-column: 1 / 3; grid-row: 2; }
+            .subject-note { grid-column: 3 / 5; grid-row: 2; }
+        }
+        @media (min-width: 720px) {
+        }
+        label { display: block; font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 4px; }
+        input[type="text"], input[type="number"], input[type="date"], input[type="time"], textarea {
+            display: block; width: 100%; min-height: 44px;
+            background: #FFFFFF; border: 1.5px solid var(--ink); border-radius: 3px; padding: 9px 10px; font-size: 16px;
+        }
+        textarea { resize: vertical; line-height: 1.5; }
+        ::placeholder { color: #6B7192; }
+        .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 20px; }
+
+        /* Project plan: index cards */
+        .project-cards { list-style: none; margin: 18px 0 14px; padding: 0; display: grid; gap: 18px; }
+        .project-card { background: #FFFFFF; box-shadow: 3px 4px 0 rgba(30, 42, 120, .16); border: 1px solid #C9D3E8; transform: rotate(var(--tilt, 0deg)); transition: transform .2s; }
+        .project-card:focus-within { transform: rotate(0deg); }
+        .project-card.dealt { animation: deal-in .42s cubic-bezier(.25, 1.25, .5, 1) backwards; }
+        @keyframes deal-in { from { opacity: 0; transform: translate(40px, 26px) rotate(7deg); } }
+        .project-card.leaving { animation: deal-out .18s ease-in forwards; }
+        @keyframes deal-out { to { opacity: 0; transform: translate(50px, -8px) rotate(6deg); } }
+        .project-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 4px 14px; background: var(--card-color); }
+        .project-head b { font-family: 'Zilla Slab', Georgia, serif; font-size: 18px; color: var(--ink); }
+        .project-remove { width: 32px; height: 32px; background: none; border: 0; color: var(--ink); font-size: 22px; line-height: 1; }
+        .project-remove:hover { color: var(--red-pen); }
+        .project-body { display: grid; gap: 12px; padding: 14px; }
+        @media (min-width: 720px) { .project-body { grid-template-columns: minmax(0, 1fr) 220px; } .project-wide { grid-column: 1 / -1; } }
+        .req-add { justify-self: start; }
+        .req-add.popping { animation: req-pop .38s cubic-bezier(.3, 1.7, .5, 1) backwards; }
+        @keyframes req-pop { from { opacity: 0; transform: scale(.5) rotate(-6deg); } }
+        .req-box { animation: req-open .24s ease-out; }
+        @keyframes req-open { from { opacity: 0; transform: translateY(-8px); } }
+        .req-box-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .deadline-note { display: grid; gap: 8px; }
+        .deadline-note p { padding: 4px 10px; justify-self: start; font-weight: 700; font-size: 15px; line-height: 1.35; color: var(--text); background: var(--note-color); transform: rotate(-.6deg); }
+        .check-path { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); line-height: 1.3; }
+        .check-line { position: relative; flex: 1; height: 16px; min-width: 60px; display: flex; align-items: center; justify-content: space-between; }
+        .check-line::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: var(--ink); transform-origin: left; animation: line-draw .5s ease-out; }
+        @keyframes line-draw { from { transform: scaleX(0); } }
+        .check-dot { position: relative; width: 12px; height: 12px; border-radius: 50%; background: var(--note-color); border: 2px solid var(--ink); animation: dot-pop .3s cubic-bezier(.3, 1.8, .5, 1) backwards; animation-delay: calc(var(--i) * 70ms + 120ms); }
+        .check-dot:last-child { background: var(--red-pen); border-color: var(--red-pen); transform: scale(1.2); }
+        @keyframes dot-pop { from { transform: scale(0); } }
+        .project-add {
+            width: 100%; padding: 14px; background: none; border: 2px dashed var(--ink); color: var(--ink);
+            font-size: 15px; font-weight: 700; transition: background-color .15s, transform .15s;
+        }
+        .project-add:hover { background: var(--desk); transform: translateY(-1px); }
+
+        .plan { margin-top: 40px; }
+        .plan-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+        .plan-badge { padding: 0 8px; font-size: 14px; font-weight: 700; }
+
+        .markdown-content { overflow-wrap: anywhere; padding-bottom: var(--line); }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 {
+            font-family: 'Zilla Slab', Georgia, serif; font-size: 21px; line-height: var(--line);
+            font-weight: 700; color: var(--ink); margin: var(--line) 0 0;
+        }
+        .markdown-content > :first-child { margin-top: 0; }
+        .markdown-content p, .markdown-content ul, .markdown-content ol { margin: 0 0 var(--line); line-height: var(--line); }
+        .markdown-content h1 + p, .markdown-content h2 + p, .markdown-content h3 + p, .markdown-content h4 + p { margin-top: 0; }
+        .markdown-content ul, .markdown-content ol { padding-left: 22px; }
+        .markdown-content ul:last-child, .markdown-content ol:last-child, .markdown-content p:last-child { margin-bottom: 0; }
+        .markdown-content strong { font-weight: 700; color: var(--ink); }
+        .markdown-content table { width: 100%; border-collapse: collapse; background: var(--paper); font-size: 14px; line-height: 1.4; margin-bottom: var(--line); }
+        .markdown-content th, .markdown-content td { border: 1px solid var(--ink); padding: 6px 8px; text-align: left; }
+        .markdown-content hr { border: 0; margin: 0; height: var(--line); }
+
+        .plan-actions { border-top: 1.5px solid var(--ink); padding-top: 20px; }
+        .plan-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .plan-hint { font-size: 14px; color: var(--muted); margin-top: 12px; }
+
+        .notice { margin-top: 12px; padding: 10px 14px; border-left: 4px solid; background: var(--paper); line-height: 1.5; font-size: 15px; }
+        .notice a { margin-left: 4px; font-weight: 700; }
+        .notice-success { border-color: #2E8B3D; background: #E9F9E7; }
+        .notice-error { border-color: var(--red-pen); background: #FDECEE; }
+        .notice-info { border-color: var(--ink); }
+        .loader { display: flex; align-items: center; gap: 10px; padding: 8px 0; color: var(--muted); line-height: 1.5; }
+        .spinner {
+            flex: none; height: 16px; width: 16px; border-radius: 50%;
+            border: 2px solid var(--rule); border-top-color: var(--ink); animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---------- calendar ---------- */
+        .cal-empty { margin-top: 24px; padding: 16px; border: 1.5px dashed var(--ink); }
+        .cal-empty h3 { margin-bottom: 4px; }
+        .cal-empty .btn { margin-top: 12px; }
+        .cal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 24px 0 12px; }
+        .cal-toolbar-center { display: flex; align-items: center; gap: 12px; }
+        .cal-toolbar h3 { font-size: 22px; }
+        .cal-nav { height: 40px; width: 40px; background: none; border: 1.5px solid var(--ink); border-radius: 4px; color: var(--ink); font-size: 18px; line-height: 1; }
+        .cal-nav:hover { background: var(--desk); }
+        .cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .cal-weekdays { font-size: 12px; font-weight: 700; color: var(--ink); text-align: left; }
+        .cal-weekdays span { padding: 4px; }
+        .cal-grid { gap: 1px; background: var(--ink); border: 1px solid var(--ink); }
+        .cal-cell {
+            display: flex; flex-direction: column; gap: 3px; min-width: 0; min-height: 60px;
+            background: var(--paper); border: 0; padding: 4px; text-align: left; overflow: hidden;
+        }
+        @media (min-width: 720px) { .cal-cell { min-height: 100px; } }
+        .cal-cell:hover { background: var(--desk); }
+        .cal-cell.outside { background: #F0F2F8; }
+        .cal-cell.outside .cal-num { color: #6B7192; }
+        .cal-cell.selected { box-shadow: inset 0 0 0 2.5px var(--ink); }
+        .cal-num { font-size: 13px; font-weight: 700; color: var(--text); height: 22px; width: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex: none; }
+        .cal-cell.today .cal-num { border: 2px solid var(--red-pen); color: var(--red-pen); }
+        .cal-bars { display: grid; gap: 2px; }
+        .cal-bar { height: 5px; outline: 1px solid rgba(30, 42, 120, .35); outline-offset: -1px; }
+        .cal-titles { display: none; }
+        .cal-title { display: block; font-size: 11px; line-height: 1.35; padding: 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+        .cal-title.done { text-decoration: line-through; color: var(--muted); }
+        .cal-more { display: block; font-size: 11px; color: var(--muted); padding: 0 3px; }
+        @media (min-width: 720px) {
+            .cal-bars { display: none; }
+            .cal-titles { display: grid; gap: 2px; min-width: 0; }
+        }
+
+        .day-panel { margin-top: 32px; }
+        .event-list { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+        .event { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+        .event input[type="checkbox"] { flex: none; height: 20px; width: 20px; margin: 2px 0 0; accent-color: var(--ink); cursor: pointer; }
+        .event-body { flex: 1; min-width: 0; }
+        .event-time { display: table; font-size: 13px; font-weight: 700; padding: 0 6px; color: var(--text); }
+        .event-title {
+            display: inline; overflow-wrap: anywhere; line-height: 1.6; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+            background: linear-gradient(var(--red-pen), var(--red-pen)) no-repeat 0 58% / 0 2px;
+        }
+        .event-title.done { background-size: 100% 2px; color: var(--muted); }
+        .day-head { display: flex; align-items: center; gap: 12px; min-height: 36px; }
+        .day-stamp {
+            padding: 1px 8px; border: 3px solid var(--red-pen); border-radius: 4px; color: var(--red-pen);
+            font-family: 'Zilla Slab', Georgia, serif; font-weight: 700; font-size: 15px; white-space: nowrap; transform: rotate(-5deg);
+        }
+        .event-remove { flex: none; background: none; border: 0; color: var(--muted); font-size: 22px; line-height: 1; padding: 0 6px; }
+        .event-remove:hover { color: var(--red-pen); }
+        .empty-day { color: var(--muted); padding: 10px 0; }
+
+        .plan-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+        .plan-row-info { flex: 1; min-width: 12rem; background: none; border: 0; padding: 0; text-align: left; }
+        .plan-row-name { display: inline; font-weight: 700; padding: 0 6px; margin-left: -6px; color: var(--text); overflow-wrap: anywhere; }
+        .plan-row-meta { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+        .plan-row-remove { background: none; border: 0; padding: 4px; font-size: 14px; color: var(--red-pen); text-decoration: underline; text-underline-offset: 3px; }
+
+        /* ---------- modal & footer ---------- */
+        .modal { position: fixed; inset: 0; z-index: 50; background: rgba(27, 31, 59, .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-box { background: var(--paper); border: 1.5px solid var(--ink); border-radius: 4px; padding: 24px; max-width: 28rem; width: 100%; }
+        .modal-box p { color: var(--muted); margin-top: 8px; }
+        .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+        .flash { margin-bottom: 12px; padding: 10px 14px; border-left: 4px solid var(--ink); background: var(--yellow); }
+        footer {
+            display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+            padding: 16px var(--pad-right) 24px 16px; font-size: 14px; color: var(--muted);
+        }
+        @media (min-width: 720px) { footer { padding-left: var(--margin); padding-right: 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
-<body class="bg-zinc-950 text-zinc-50 min-h-screen selection:bg-cyan-500/30 selection:text-cyan-200 antialiased flex">
+<body>
 
-    <div id="sync-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title">
-        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl max-w-md w-full mx-4 space-y-6 shadow-2xl animate-fade-in">
-            <div class="flex items-center gap-3">
-                <div class="h-10 w-10 shrink-0 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20 text-lg">
-                    📅
-                </div>
-                <div>
-                    <h4 id="sync-modal-title" class="text-base font-bold text-zinc-100">Add to Google Calendar?</h4>
-                    <p class="text-xs text-zinc-400 mt-0.5">We'll create one all-day event with this plan in its description. Nothing else in your calendar is touched.</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3 justify-end pt-2">
-                <button type="button" onclick="dismissSyncModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition">
-                    Keep Only Here
-                </button>
-                <button type="button" id="sync-confirm-btn" onclick="confirmCalendarSync()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl transition shadow-lg shadow-cyan-500/10">
-                    Sync to My Calendar
-                </button>
+    <div id="sync-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title">
+        <div class="modal-box">
+            <h3 id="sync-modal-title">Send to Google Calendar?</h3>
+            <p>This creates one all-day event with the whole plan in its description. Nothing else in your calendar changes.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="dismissSyncModal()">Keep it here</button>
+                <button type="button" class="btn btn-primary" id="sync-confirm-btn" onclick="confirmCalendarSync()">Send to Google Calendar</button>
             </div>
         </div>
     </div>
 
-    <aside class="w-72 bg-zinc-900 border-r border-zinc-800/80 p-6 flex-col justify-between fixed h-full z-30 hidden md:flex">
-        <div class="space-y-8">
-            <button type="button" class="flex items-center gap-3 px-2 text-left" onclick="navigateToHome()">
-                <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                    <span class="text-white font-black text-sm">S</span>
-                </div>
-                <div>
-                    <span class="font-bold text-base tracking-tight block">ScholarSync AI</span>
-                    <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">AI Study Planner</span>
-                </div>
-            </button>
-
-            <div class="bg-zinc-950/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 shadow-inner">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-zinc-400 font-medium">Current Streak</span>
-                    <span id="stat-streak" class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md">0 Days</span>
-                </div>
-                <div class="h-px bg-zinc-800/60"></div>
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-zinc-400 font-medium">XP Earned</span>
-                    <span id="stat-points" class="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">0 XP</span>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                <div class="space-y-1">
-                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2 block mb-2">Navigation</span>
-                    <button type="button" onclick="navigateToHome()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
-                        Home
-                    </button>
-                    <button type="button" onclick="navigateToDemo()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
-                        Open Planner
-                    </button>
-                    <button type="button" onclick="navigateToCalendar()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 transition">
-                        My Calendar
-                    </button>
-                </div>
-
-                <div class="space-y-1.5 relative">
-                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2 block">Planners</span>
-                    <div id="dropdown-wrapper" class="relative">
-                        <button type="button" onclick="toggleSidebarDropdown()" id="dropdown-trigger-btn" aria-haspopup="true" aria-expanded="false" class="w-full flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-semibold text-zinc-200 hover:border-zinc-700 transition">
-                            <span id="dropdown-active-label">Study Planner</span>
-                            <span class="text-zinc-500 text-[10px]">▼</span>
-                        </button>
-
-                        <div id="sidebar-features-dropdown" class="hidden absolute top-full left-0 w-full mt-1.5 bg-zinc-950 border border-zinc-800 rounded-xl p-1.5 shadow-2xl z-40 space-y-1">
-                            <button type="button" onclick="selectEngineMode('planner')" data-mode-item="planner" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
-                                Study Planner
-                            </button>
-                            <button type="button" onclick="selectEngineMode('milestone')" data-mode-item="milestone" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
-                                Milestone Matrix
-                            </button>
-                            <button type="button" onclick="selectEngineMode('booster')" data-mode-item="booster" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-amber-400 hover:bg-zinc-900 rounded-lg border-l-2 border-transparent transition">
-                                Daily Booster
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="border-t border-zinc-800/80 pt-4 px-2">
-            <div class="flex items-center gap-2 text-xs text-zinc-500">
-                <a href="https://github.com/bhumanity16/Academic-Weapon" target="_blank" rel="noopener noreferrer" class="hover:text-zinc-300 transition">View the code on GitHub ↗</a>
-            </div>
-        </div>
-    </aside>
-
-    <main class="flex-1 md:ml-72 min-h-screen flex flex-col min-w-0">
-
-        <nav class="w-full border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 py-4 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-4">
-                <button type="button" class="md:hidden text-lg font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400" onclick="navigateToHome()">ScholarSync</button>
-                <button type="button" class="hidden md:inline-block text-xs font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full hover:bg-zinc-800 transition" onclick="window.location.reload();">
-                    Start Over
-                </button>
-            </div>
-
-            <div class="flex items-center gap-3 md:gap-4 min-w-0">
-                <button type="button" onclick="navigateToDemo()" class="hidden sm:inline-block text-xs text-zinc-400 hover:text-zinc-200 font-semibold px-2 py-1.5 transition">
-                    Open Planner
-                </button>
-                <button type="button" onclick="navigateToCalendar()" class="text-xs text-zinc-400 hover:text-zinc-200 font-semibold px-1 sm:px-2 py-1.5 transition">
-                    📅<span class="hidden sm:inline"> Calendar</span><span class="sr-only sm:hidden">Calendar</span>
-                </button>
-                <div class="hidden sm:block h-4 w-px bg-zinc-800"></div>
-
+    <div class="binder">
+        <header class="masthead">
+            <button type="button" class="brand" onclick="navigateToHome()"><span class="brand-note" aria-hidden="true">S</span><span>Scholar<span class="brand-sync">Sync</span></span></button>
+            <div class="account">
                 {% if user %}
-                <div class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-full shadow-md min-w-0">
-                    {% if user.picture %}
-                    <img src="{{ user.picture }}" alt="" referrerpolicy="no-referrer" class="h-4 w-4 rounded-full border border-zinc-700">
-                    {% endif %}
-                    <span class="text-zinc-200 text-xs font-semibold truncate max-w-[10rem]">{{ user.name or user.email or "Signed in" }}</span>
-                    <div class="h-3 w-px bg-zinc-800"></div>
-                    <a href="/logout" class="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase tracking-wider whitespace-nowrap">Sign Out</a>
-                </div>
+                {% if user.picture %}
+                <img src="{{ user.picture }}" alt="" referrerpolicy="no-referrer">
+                {% endif %}
+                <span class="account-name">{{ user.name or user.email or "Signed in" }}</span>
+                <a href="/logout">Sign out</a>
                 {% else %}
-                <a href="/login" class="flex items-center gap-2.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/80 text-zinc-200 text-xs font-semibold px-4 py-2 rounded-full transition-all shadow-md whitespace-nowrap">
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <a href="/login" class="sign-in">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
                     </svg>
-                    <span class="hidden sm:inline">Sign in with Google</span><span class="sm:hidden">Sign in</span>
+                    <span class="long">Sign in with Google</span><span class="short">Sign in</span>
                 </a>
                 {% endif %}
             </div>
+        </header>
+
+        <nav class="tabs" aria-label="Main">
+            <button type="button" class="tab" data-view="home" onclick="navigateToHome()">Home</button>
+            <button type="button" class="tab" data-view="demo" onclick="navigateToDemo()">Plan</button>
+            <button type="button" class="tab" data-view="calendar" onclick="navigateToCalendar()">Calendar</button>
         </nav>
 
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div class="px-4 md:px-8 pt-6 max-w-4xl w-full mx-auto">
+        <main class="sheet">
+            {% with messages = get_flashed_messages() %}
             {% for message in messages %}
-            <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs rounded-xl font-semibold mb-2">{{ message }}</div>
+            <div class="flash">{{ message }}</div>
             {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
+            {% endwith %}
 
-        <div class="container mx-auto px-4 md:px-8 py-10 max-w-4xl flex-1 space-y-12">
+            <div id="view-home">
+                <div class="hero-track" id="hero-track">
+                    <div class="ruled hero-stage">
+                        <h1 class="hero-title"><span class="struck" id="hero-struck">“It's only one exam.”</span></h1>
+                        <div class="hero-lines">
+                            <p id="hero-line-0">ScholarSync is an AI study planner for high school students.</p>
+                            <p id="hero-line-1">Here's how much work it really is.</p>
+                            <p id="hero-line-2">See it before you make plans you'll have to cancel.</p>
+                        </div>
+                        <div class="levels off" id="hero-levels" aria-hidden="true">
+                            <span data-level="high">Feeling ready</span>
+                            <span data-level="mid">Kind of ready</span>
+                            <span data-level="low">Not ready</span>
+                        </div>
+                        <div class="week" id="hero-week"></div>
+                        <p class="week-total">One line on your calendar. <b id="hero-hours">0 hours</b> of work before it.</p>
+                        <div class="hero-actions">
+                            <button type="button" class="btn btn-primary" onclick="navigateToDemo()">Build my plan</button>
+                            <span class="scroll-cue" id="scroll-cue" aria-hidden="true"><i></i>Keep scrolling</span>
+                        </div>
+                    </div>
+                </div>
 
-            <div id="view-home" class="space-y-12">
-                <header class="relative space-y-4">
-                    <div class="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                        <span>AI Study Planning for Students</span>
-                    </div>
-                    <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-[1.1] text-zinc-100">
-                        ScholarSync: <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500">Support</span> for Every Deadline.
-                    </h1>
-                    <p class="text-zinc-400 text-base md:text-lg max-w-2xl leading-relaxed">
-                        Turn exam dates, big projects and today's to-do list into a clear, realistic schedule, then put it on your calendar in one click.
-                    </p>
-                    <div class="pt-2">
-                        <button type="button" onclick="navigateToDemo()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-cyan-500/15 transition duration-150">
-                            Try It Now ➔
-                        </button>
-                    </div>
-                </header>
-
-                <section class="border-t border-zinc-900 pt-8 space-y-6">
-                    <div class="text-left">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Three Planners</span>
-                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">What ScholarSync Can Plan For You</h2>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button type="button" onclick="selectEngineMode('planner')" class="text-left bg-zinc-900 border border-zinc-800/60 hover:border-cyan-500/40 p-5 rounded-2xl transition">
-                            <span class="block text-2xl">📚</span>
-                            <span class="block text-sm font-bold text-cyan-400 mt-2">Study Planner</span>
-                            <span class="block text-xs text-zinc-400 mt-1 leading-relaxed">Enter your exam date and how confident you feel in each subject. Weaker subjects get more time.</span>
-                        </button>
-                        <button type="button" onclick="selectEngineMode('milestone')" class="text-left bg-zinc-900 border border-zinc-800/60 hover:border-emerald-500/40 p-5 rounded-2xl transition">
-                            <span class="block text-2xl">🧩</span>
-                            <span class="block text-sm font-bold text-emerald-400 mt-2">Milestone Matrix</span>
-                            <span class="block text-xs text-zinc-400 mt-1 leading-relaxed">Break a big project into small checkpoints with dates, plus a few resources to get started.</span>
-                        </button>
-                        <button type="button" onclick="selectEngineMode('booster')" class="text-left bg-zinc-900 border border-zinc-800/60 hover:border-amber-500/40 p-5 rounded-2xl transition">
-                            <span class="block text-2xl">⚡</span>
-                            <span class="block text-sm font-bold text-amber-400 mt-2">Daily Booster</span>
-                            <span class="block text-xs text-zinc-400 mt-1 leading-relaxed">List today's tasks and your free hours to get a focused Pomodoro-style schedule with breaks.</span>
-                        </button>
-                    </div>
+                <section id="about">
+                    <h2>Why I built this</h2>
+                    <p class="story measure" id="story">I once had just one exam the next week, and I underestimated how much studying it would take. I'd already made plans with my friends, and I ended up having to back out of them. I built ScholarSync so students can see how much work they actually have ahead of them, and plan around it.</p>
                 </section>
 
-                <section class="border-t border-zinc-900 pt-8 space-y-6">
-                    <div class="text-left">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">How It Works</span>
-                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">From Deadline to Plan in Three Steps</h2>
-                    </div>
-                    <ol class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="text-xs font-bold text-zinc-500">STEP 1</span>
-                            <p class="text-sm text-zinc-300 mt-1">Pick a planner and fill in your dates, subjects or tasks.</p>
-                        </li>
-                        <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="text-xs font-bold text-zinc-500">STEP 2</span>
-                            <p class="text-sm text-zinc-300 mt-1">The AI builds a day-by-day plan you can read right on the page.</p>
-                        </li>
-                        <li class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="text-xs font-bold text-zinc-500">STEP 3</span>
-                            <p class="text-sm text-zinc-300 mt-1">Save it to the built-in calendar, download it for any calendar app, or send it to Google Calendar.</p>
-                        </li>
+                <section>
+                    <h2>Three ways to plan</h2>
+                    <ul class="rows" data-reveal>
+                        <li><button type="button" class="planner-row" onclick="selectEngineMode('planner')"><span class="planner-name mark-planner">Exam plan</span><span>Enter your exam date, what's on the test, and how confident you feel. Weaker subjects get more time.</span></button></li>
+                        <li><button type="button" class="planner-row" onclick="selectEngineMode('milestone')"><span class="planner-name mark-milestone">Project plan</span><span>Break a big project into small dated checkpoints, with a few places to start your research.</span></button></li>
+                        <li><button type="button" class="planner-row" onclick="selectEngineMode('booster')"><span class="planner-name mark-booster">Today's plan</span><span>List today's tasks, your free hours, and when you want to stop. Get a focused schedule with breaks.</span></button></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>How it works</h2>
+                    <ol class="steps measure" data-reveal>
+                        <li>Pick a plan and fill in your dates, subjects, or tasks.</li>
+                        <li>The AI builds a schedule you can read right on the page.</li>
+                        <li>Save it to the built-in calendar, download it for any calendar app, or send it to Google Calendar.</li>
                     </ol>
-                    <p class="text-xs text-zinc-500">AI plans are suggestions. Double-check dates against your school's official schedule.</p>
+                    <p class="section-note measure">AI plans are suggestions. Check dates against your school's official schedule.</p>
                 </section>
 
-                <section id="about" class="border-t border-zinc-900 pt-8 space-y-6">
-                    <div class="text-left">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Why I Built It</span>
-                        <p class="text-base md:text-lg text-zinc-200 max-w-2xl leading-relaxed border-l-4 border-cyan-500/60 pl-4">
-                            I once had just one exam the next week, and I underestimated how much studying it would take. I'd already made plans with my friends, and I ended up having to back out of them. I built ScholarSync so students can see how much work they actually have ahead of them, and plan around it.
-                        </p>
+                <section>
+                    <h2>How ScholarSync is built</h2>
+                    <p class="section-note measure">A full-stack web app, from the form you fill in to the calendar it lands on.</p>
+
+                    <ol class="flow" data-reveal aria-label="How a plan gets made">
+                        <li class="flow-step"><b>You</b><span>Fill in the form in your browser</span></li>
+                        <li class="flow-step"><b>Flask server</b><span>Python, running as a serverless function on Vercel</span></li>
+                        <li class="flow-step"><b>Groq API</b><span>A large language model writes the plan</span></li>
+                        <li class="flow-step"><b>Your calendar</b><span>Built-in, a standard .ics file, or optional Google Calendar sync</span></li>
+                    </ol>
+
+                    <div class="desk">
+                        <article class="desk-item graph" data-reveal>
+                            <h3>The code does the math, not the AI</h3>
+                            <dl class="sums" aria-label="A worked example using today's date">
+                                <div><dt>Today</dt><dd id="sum-today"></dd></div>
+                                <div><dt>Sample exam</dt><dd id="sum-exam"></dd></div>
+                                <div class="sum-total"><dt>Days left</dt><dd><span class="swipe">12</span></dd></div>
+                                <div><dt>8:40 PM, stop by 10:00 PM</dt><dd><span class="swipe">1.25 hours</span></dd></div>
+                            </dl>
+                            <p>Language models often get weekdays and time arithmetic wrong. The server works out today's date, the day of the week, days until the exam, and how much time fits before your stop time, then gives those facts to the AI.</p>
+                        </article>
+
+                        <article class="desk-item day-card" data-reveal>
+                            <h3>Plans that fit a school day</h3>
+                            <p>Weekday study starts after 4 PM and stays around 2–3 hours, weekends get more, and Today's plan never schedules past the stop time you choose. If your tasks don't fit, it tells you what got cut.</p>
+                            <div class="day-strip" id="day-strip" aria-hidden="true">
+                                <div class="day-school"><span>No study before 4 PM</span></div>
+                                <div class="day-stop" id="day-stop"></div>
+                            </div>
+                            <div class="day-ticks" aria-hidden="true"><span>3 PM</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8 PM</span></div>
+                            <label for="day-slider">Try it: stop by <span id="day-stop-label"></span></label>
+                            <input type="range" id="day-slider" class="day-slider" min="990" max="1200" step="15" value="1080">
+                            <p class="day-result" id="day-result" role="status"></p>
+                        </article>
+
+                        <article class="desk-item vault" data-reveal>
+                            <h3>Private by design</h3>
+                            <div class="vault-boxes">
+                                <div class="vault-box">
+                                    <b>Your browser</b>
+                                    <ul>
+                                        <li class="mark-planner">Your calendar</li>
+                                        <li class="mark-milestone">Your streak</li>
+                                        <li class="mark-booster">Your XP</li>
+                                    </ul>
+                                </div>
+                                <div class="vault-box vault-empty">
+                                    <b>ScholarSync's server</b>
+                                    <p>Plans aren't saved here.</p>
+                                    <span class="stamp">No database</span>
+                                </div>
+                            </div>
+                            <p>There's no database. Your calendar, streak, and XP live only in your own browser, and Google Calendar is touched only if you sign in and confirm.</p>
+                        </article>
+
+                        <article class="desk-item checklist" data-reveal>
+                            <h3>Built to be safe in public</h3>
+                            <ul>
+                                <li><svg viewBox="0 0 28 24" aria-hidden="true"><path pathLength="1" d="M3 13 L10 20 L25 3"/></svg>Every input is checked on the server</li>
+                                <li><svg viewBox="0 0 28 24" aria-hidden="true"><path pathLength="1" d="M3 13 L10 20 L25 3"/></svg>Requests are rate-limited</li>
+                                <li><svg viewBox="0 0 28 24" aria-hidden="true"><path pathLength="1" d="M3 13 L10 20 L25 3"/></svg>Google sign-in uses PKCE and state checks</li>
+                                <li><svg viewBox="0 0 28 24" aria-hidden="true"><path pathLength="1" d="M3 13 L10 20 L25 3"/></svg>The AI's output is sanitized before it's shown on the page</li>
+                            </ul>
+                        </article>
                     </div>
-                    <div class="text-left pt-2">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">About the Project</span>
-                        <h2 class="text-xl font-bold tracking-tight text-zinc-200">How ScholarSync Is Built</h2>
-                        <p class="text-sm text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-                            ScholarSync is a full-stack web app: a Python (Flask) backend running as a serverless function on Vercel, a large language model through the Groq API to write the plans, and a built-in calendar that exports standard .ics files, with optional Google Calendar sync.
-                        </p>
+
+                    <p style="margin-top: 28px"><a href="https://github.com/bhumanity16/Academic-Weapon" target="_blank" rel="noopener noreferrer">View the source code on GitHub</a></p>
+                </section>
+
+                <section class="closing" data-reveal>
+                    <h2>What do you want to plan?</h2>
+                    <div class="closing-notes">
+                        <button type="button" class="closing-note mark-planner" onclick="selectEngineMode('planner')"><b>Exam plan</b><span>Study for a test</span></button>
+                        <button type="button" class="closing-note mark-milestone" onclick="selectEngineMode('milestone')"><b>Project plan</b><span>Break down a big assignment</span></button>
+                        <button type="button" class="closing-note mark-booster" onclick="selectEngineMode('booster')"><b>Today's plan</b><span>Get through today's tasks</span></button>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="block text-sm font-bold text-zinc-200">The code does the math, not the AI</span>
-                            <p class="text-xs text-zinc-400 mt-1 leading-relaxed">Language models often get weekdays and time arithmetic wrong. The server works out today's date, the day of the week, days until the exam and how much time fits before your stop time, then gives those facts to the AI.</p>
-                        </div>
-                        <div class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="block text-sm font-bold text-zinc-200">Plans that fit a school day</span>
-                            <p class="text-xs text-zinc-400 mt-1 leading-relaxed">Weekday study starts after 4 PM and stays around 2–3 hours, weekends get more, and the Daily Booster never schedules past the stop time you choose. If your tasks don't fit, it tells you what got cut.</p>
-                        </div>
-                        <div class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="block text-sm font-bold text-zinc-200">Private by design</span>
-                            <p class="text-xs text-zinc-400 mt-1 leading-relaxed">There's no database. Plans aren't saved on the server, your calendar, streak and XP live only in your own browser, and Google Calendar is touched only if you sign in and confirm.</p>
-                        </div>
-                        <div class="bg-zinc-900/40 border border-zinc-800/50 p-5 rounded-2xl">
-                            <span class="block text-sm font-bold text-zinc-200">Built to be safe in public</span>
-                            <p class="text-xs text-zinc-400 mt-1 leading-relaxed">Every input is checked on the server, requests are rate-limited, Google sign-in uses PKCE and state checks, and the AI's output is sanitized before it's shown on the page.</p>
-                        </div>
-                    </div>
-                    <a href="https://github.com/bhumanity16/Academic-Weapon" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-semibold text-cyan-400 hover:text-cyan-300 transition">
-                        View the source code on GitHub ↗
-                    </a>
                 </section>
             </div>
 
-            <div id="view-demo" class="hidden space-y-8">
-                <div class="border-b border-zinc-900 pb-4">
-                    <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Planner</span>
-                    <h2 class="text-2xl font-extrabold tracking-tight text-zinc-100">Plan Your Time</h2>
-                    <p class="text-xs text-zinc-400 mt-1">Choose a planner, fill in the details (or load an example), and build your plan.</p>
+            <div id="view-demo" class="hidden">
+                <div class="view-head">
+                    <div>
+                        <h2>Plan your time</h2>
+                        <p class="section-note">Choose a plan, fill in the details, and build your schedule.</p>
+                    </div>
+                    <div class="view-meta">
+                        <span><span id="stat-streak">0-day streak</span>, <span id="stat-points">0 XP</span></span>
+                        <button type="button" class="link-btn" onclick="window.location.reload();">Start over</button>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2 bg-zinc-900 border border-zinc-800/80 p-1.5 rounded-2xl" role="tablist">
-                    <button type="button" role="tab" data-mode-tab="planner" onclick="changeMode('planner')" class="px-2 py-2.5 rounded-xl text-xs font-bold transition">Study Planner</button>
-                    <button type="button" role="tab" data-mode-tab="milestone" onclick="changeMode('milestone')" class="px-2 py-2.5 rounded-xl text-xs font-bold transition">Milestones</button>
-                    <button type="button" role="tab" data-mode-tab="booster" onclick="changeMode('booster')" class="px-2 py-2.5 rounded-xl text-xs font-bold transition">Daily Booster</button>
+                <div class="mode-tabs" role="tablist" aria-label="Type of plan">
+                    <button type="button" role="tab" class="mode-tab" data-mode-tab="planner" onclick="changeMode('planner')">Exam plan</button>
+                    <button type="button" role="tab" class="mode-tab" data-mode-tab="milestone" onclick="changeMode('milestone')">Project plan</button>
+                    <button type="button" role="tab" class="mode-tab" data-mode-tab="booster" onclick="changeMode('booster')">Today's plan</button>
                 </div>
 
-                <form id="engine-form" onsubmit="event.preventDefault(); executeAiEngine();" class="bg-zinc-900 p-6 md:p-8 rounded-3xl shadow-2xl border border-zinc-800/80 relative overflow-hidden" novalidate>
-                    <div class="absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-cyan-500/5 to-transparent rounded-full blur-2xl pointer-events-none"></div>
-
-                    <div id="wrapper-planner" class="mode-view space-y-5">
-                        <div class="border-b border-zinc-800 pb-3">
-                            <h3 class="text-lg font-bold text-cyan-400 tracking-tight">Study Planner</h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Add your exam date and how confident you feel in each subject.</p>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="md:col-span-1">
-                                <label for="input-date-planner" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Exam Start Date</label>
-                                <input type="date" id="input-date-planner" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="input-sub-planner" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Subjects & Confidence Levels (1 = weakest, 5 = strongest)</label>
-                                <textarea id="input-sub-planner" rows="3" maxlength="2000" placeholder="Math: 2&#10;History: 5&#10;Chemistry: 3" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="wrapper-milestone" class="mode-view hidden space-y-5">
-                        <div class="border-b border-zinc-800 pb-3">
-                            <h3 class="text-lg font-bold text-emerald-400 tracking-tight">Milestone Matrix</h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">Break a big assignment into smaller dated checkpoints.</p>
-                        </div>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="input-title-milestone" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Project Name</label>
-                                    <input type="text" id="input-title-milestone" maxlength="200" placeholder="AP History Research Paper" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition">
+                <form id="engine-form" onsubmit="event.preventDefault(); executeAiEngine();" novalidate>
+                    <div id="wrapper-planner" class="mode-view">
+                        <p class="section-note card-intro">Add your exam date, what's on the test, and how you really feel about each subject.</p>
+                        <div class="project-card plan-card plan-card-exam" id="exam-card">
+                            <div class="project-head"><b>Your exam</b></div>
+                            <div class="project-body">
+                                <div class="project-wide exam-date-field">
+                                    <label for="input-date-planner">Exam date</label>
+                                    <button type="button" class="date-field project-deadline" id="input-date-planner"></button>
                                 </div>
-                                <div>
-                                    <label for="input-date-milestone" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Final Deadline</label>
-                                    <input type="date" id="input-date-milestone" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition">
+                                <div class="deadline-note project-wide hidden"></div>
+                                <div class="project-wide">
+                                    <span class="subjects-label" id="subjects-label">Subjects and how you feel about them</span>
+                                    <ul class="subject-rows" id="subject-rows" aria-labelledby="subjects-label"></ul>
+                                    <button type="button" class="link-btn" id="add-subject-btn" onclick="addSubjectRow({ focus: true })">Add another subject</button>
                                 </div>
                             </div>
-                            <div>
-                                <label for="input-req-milestone" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Requirements</label>
-                                <textarea id="input-req-milestone" rows="2" maxlength="2000" placeholder="Minimum 4 sources, MLA guidelines, 1500 words" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"></textarea>
+                        </div>
+                    </div>
+
+                    <div id="wrapper-milestone" class="mode-view hidden">
+                        <p class="section-note">Break big assignments into small dated checkpoints. Got more than one? Add them all, and they'll be planned together.</p>
+                        <ul class="project-cards" id="project-cards"></ul>
+                        <button type="button" class="project-add" id="add-project-btn" onclick="addProjectCard({ focus: true })">Add another project</button>
+                    </div>
+
+                    <div id="wrapper-booster" class="mode-view hidden">
+                        <p class="section-note card-intro">List today's tasks, how much free time you have, and when you want to stop.</p>
+                        <div class="project-card plan-card plan-card-today" id="today-card">
+                            <div class="project-head"><b>Today</b></div>
+                            <div class="project-body today-body">
+                                <div class="project-wide">
+                                    <label for="input-tasks-booster">Tasks for today</label>
+                                    <textarea id="input-tasks-booster" rows="3" maxlength="2000" placeholder="Read English Chapter 3, Finish calculus quiz prep"></textarea>
+                                </div>
+                                <div>
+                                    <label for="input-hours-booster">Free hours today</label>
+                                    <input type="number" id="input-hours-booster" min="0.5" max="16" step="0.5" placeholder="4" oninput="updateTodayNote()">
+                                </div>
+                                <div>
+                                    <label for="input-end-booster">Stop by</label>
+                                    <input type="time" id="input-end-booster" value="22:00" step="900" oninput="updateTodayNote()">
+                                </div>
+                                <div class="deadline-note project-wide hidden" id="today-note"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="wrapper-booster" class="mode-view hidden space-y-5">
-                        <div class="border-b border-zinc-800 pb-3">
-                            <h3 class="text-lg font-bold text-amber-400 tracking-tight">Daily Booster</h3>
-                            <p class="text-xs text-zinc-500 mt-0.5">List today's tasks and how much free time you have.</p>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div class="md:col-span-2">
-                                <label for="input-tasks-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Tasks for Today</label>
-                                <textarea id="input-tasks-booster" rows="3" maxlength="2000" placeholder="Read English Chapter 3, Finish calculus quiz prep" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition"></textarea>
-                            </div>
-                            <div class="md:col-span-1">
-                                <label for="input-hours-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Free Hours Today</label>
-                                <input type="number" id="input-hours-booster" min="0.5" max="16" step="0.5" placeholder="4" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
-                            </div>
-                            <div class="md:col-span-1">
-                                <label for="input-end-booster" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Stop By</label>
-                                <input type="time" id="input-end-booster" value="22:00" step="900" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
-                            </div>
-                        </div>
+                    <div class="form-actions">
+                        <button type="submit" id="generate-btn" class="btn btn-primary">Build my plan</button>
+                        <button type="button" class="link-btn" onclick="loadExample()">Load an example</button>
                     </div>
-
-                    <button type="button" onclick="loadExample()" class="mt-5 text-xs font-semibold text-zinc-400 hover:text-zinc-200 underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-400 transition">
-                        Not sure what to type? Load an example
-                    </button>
-
-                    <button type="submit" id="generate-btn" class="w-full mt-4bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-cyan-500/5 transition duration-200 text-center text-sm tracking-wide flex items-center justify-center gap-2 group">
-                        <span id="generate-btn-label">Build My Plan</span> <span class="group-hover:translate-x-1 transition duration-150">➔</span>
-                    </button>
                 </form>
 
-                <div id="response-block" class="hidden bg-zinc-900 p-6 md:p-8 rounded-3xl border border-zinc-800/80 shadow-2xl relative" aria-live="polite">
-                    <div class="flex items-center justify-between mb-4 border-b border-zinc-800/80 pb-3 gap-3">
-                        <h3 class="text-sm font-bold text-zinc-300 flex items-center gap-2">
-                            <span class="h-2 w-2 rounded-full bg-cyan-500"></span>
-                            Your Plan
-                        </h3>
-                        <span id="badge-indicator" class="px-3 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider border border-transparent">
-                            Study Planner
-                        </span>
+                <div id="response-block" class="plan hidden" aria-live="polite">
+                    <div class="plan-head">
+                        <h3>Your plan</h3>
+                        <span id="badge-indicator" class="plan-badge"></span>
                     </div>
-                    <div id="response-payload" class="markdown-content text-zinc-200 leading-relaxed text-sm md:text-base break-words"></div>
+                    <div id="response-payload" class="markdown-content ruled"></div>
 
-                    <div id="plan-actions" class="hidden mt-6 pt-5 border-t border-zinc-800/80 space-y-3">
-                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block">Put It on a Calendar</span>
-                        <div class="flex flex-wrap gap-2">
-                            <button type="button" id="save-local-btn" onclick="savePlanToCalendar()" class="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 disabled:cursor-not-allowed text-zinc-950 font-bold text-xs px-4 py-2.5 rounded-xl transition">
-                                📅 Add to My Calendar
-                            </button>
-                            <button type="button" id="download-ics-btn" onclick="downloadPlanIcs()" class="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed text-zinc-100 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
-                                ⬇ Download for Apple / Outlook / Google (.ics)
-                            </button>
-                            <button type="button" id="google-sync-btn" onclick="showSyncModal()" class="hidden bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
-                                Send to Google Calendar
-                            </button>
+                    <div id="plan-actions" class="plan-actions hidden">
+                        <h3>Put it on a calendar</h3>
+                        <div class="plan-buttons">
+                            <button type="button" id="save-local-btn" class="btn btn-primary" onclick="savePlanToCalendar()">Add to my calendar</button>
+                            <button type="button" id="download-ics-btn" class="btn btn-secondary" onclick="downloadPlanIcs()">Download .ics file</button>
+                            <button type="button" id="google-sync-btn" class="btn btn-secondary hidden" onclick="showSyncModal()">Send to Google Calendar</button>
                         </div>
-                        <p class="text-[11px] text-zinc-500">No sign-in needed: "My Calendar" is saved in this browser, and the .ics file opens in any calendar app.</p>
+                        <p class="plan-hint">No sign-in needed. Your calendar is saved in this browser, and the .ics file opens in Apple Calendar, Outlook, or Google Calendar.</p>
                         <div id="plan-actions-status"></div>
                     </div>
                 </div>
             </div>
 
-            <div id="view-calendar" class="hidden space-y-6">
-                <div class="border-b border-zinc-900 pb-4 flex flex-wrap items-end justify-between gap-3">
+            <div id="view-calendar" class="hidden">
+                <div class="view-head">
                     <div>
-                        <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Calendar</span>
-                        <h2 class="text-2xl font-extrabold tracking-tight text-zinc-100">My Calendar</h2>
-                        <p class="text-xs text-zinc-400 mt-1">Saved plans live in this browser only. No account or sign-in needed.</p>
+                        <h2>Your calendar</h2>
+                        <p class="section-note">Saved plans stay in this browser. No account or sign-in needed.</p>
                     </div>
-                    <button type="button" id="cal-export-all" onclick="downloadAllIcs()" class="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-200 font-semibold text-xs px-4 py-2 rounded-xl transition">
-                        ⬇ Export all (.ics)
-                    </button>
+                    <button type="button" id="cal-export-all" class="btn btn-secondary btn-small" onclick="downloadAllIcs()">Export all (.ics)</button>
                 </div>
 
-                <div id="cal-empty" class="hidden bg-zinc-900/60 border border-dashed border-zinc-800 rounded-2xl p-6 text-center space-y-3">
-                    <p class="text-sm text-zinc-300">Your calendar is empty.</p>
-                    <p class="text-xs text-zinc-500">Build a plan, then tap "Add to My Calendar" under it.</p>
-                    <button type="button" onclick="navigateToDemo()" class="bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl transition">Make a Plan ➔</button>
+                <div id="cal-empty" class="cal-empty hidden">
+                    <h3>Start your calendar</h3>
+                    <p>Build a plan, then choose "Add to my calendar" under it.</p>
+                    <button type="button" class="btn btn-primary" onclick="navigateToDemo()">Build a plan</button>
                 </div>
 
-                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-3 md:p-5 shadow-2xl">
-                    <div class="flex items-center justify-between gap-2 mb-4 px-1">
-                        <button type="button" onclick="shiftMonth(-1)" aria-label="Previous month" class="h-9 w-9 rounded-xl text-zinc-300 hover:bg-zinc-800 transition">‹</button>
-                        <div class="flex items-center gap-3">
-                            <h3 id="cal-month-label" class="text-base md:text-lg font-bold text-zinc-100" aria-live="polite"></h3>
-                            <button type="button" onclick="goToToday()" class="text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded-full px-2.5 py-0.5 transition">Today</button>
-                        </div>
-                        <button type="button" onclick="shiftMonth(1)" aria-label="Next month" class="h-9 w-9 rounded-xl text-zinc-300 hover:bg-zinc-800 transition">›</button>
+                <div class="cal-toolbar">
+                    <button type="button" class="cal-nav" onclick="shiftMonth(-1)" aria-label="Previous month">‹</button>
+                    <div class="cal-toolbar-center">
+                        <h3 id="cal-month-label" aria-live="polite"></h3>
+                        <button type="button" class="link-btn" onclick="goToToday()">Today</button>
                     </div>
-                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
-                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                    </div>
-                    <div id="cal-grid" class="grid grid-cols-7 gap-1"></div>
+                    <button type="button" class="cal-nav" onclick="shiftMonth(1)" aria-label="Next month">›</button>
+                </div>
+                <div class="cal-weekdays" aria-hidden="true">
+                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+                <div id="cal-grid" class="cal-grid"></div>
+
+                <div class="day-panel">
+                    <div class="day-head"><h3 id="cal-day-title"></h3><span id="cal-day-stamp" class="day-stamp hidden">Day done</span></div>
+                    <ul id="cal-day-list" class="event-list"></ul>
                 </div>
 
-                <div class="bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 md:p-6 space-y-4">
-                    <h3 id="cal-day-title" class="text-sm font-bold text-zinc-200"></h3>
-                    <ul id="cal-day-list" class="space-y-2"></ul>
-                </div>
-
-                <div id="cal-plans-card" class="hidden bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 md:p-6 space-y-4">
-                    <h3 class="text-sm font-bold text-zinc-200">Saved Plans</h3>
-                    <ul id="cal-plan-list" class="space-y-2"></ul>
+                <div id="cal-plans-card" class="day-panel hidden">
+                    <h3>Saved plans</h3>
+                    <ul id="cal-plan-list" class="event-list"></ul>
                 </div>
             </div>
+        </main>
 
-        </div>
-
-        <footer class="border-t border-zinc-900 px-4 md:px-8 py-6 text-xs text-zinc-500 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between max-w-4xl w-full mx-auto">
-            <span>ScholarSync · Built with Flask, Groq and the Google Calendar API</span>
-            <a href="https://github.com/bhumanity16/Academic-Weapon" target="_blank" rel="noopener noreferrer" class="hover:text-zinc-300 transition">Source code on GitHub ↗</a>
+        <footer>
+            <span>ScholarSync, built with Flask, Groq, and the Google Calendar API</span>
+            <a href="https://github.com/bhumanity16/Academic-Weapon" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
         </footer>
-    </main>
+    </div>
 
     <script>
         const MODES = ['planner', 'milestone', 'booster'];
-        const MODE_LABELS = { planner: 'Study Planner', milestone: 'Milestone Matrix', booster: 'Daily Booster' };
-        const MODE_COLORS = { planner: '#22d3ee', milestone: '#34d399', booster: '#fbbf24' };
-        const MODE_TEXT_CLASSES = { planner: 'text-cyan-400', milestone: 'text-emerald-400', booster: 'text-amber-400' };
-        const NOTICE_STYLES = {
-            success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-            error: 'bg-red-500/10 border-red-500/20 text-red-400',
-            info: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300',
-        };
+        const MODE_LABELS = { planner: 'Exam plan', milestone: 'Project plan', booster: "Today's plan" };
+        const MODE_COLORS = { planner: '#FFF27A', milestone: '#FFB8D9', booster: '#B5F2B0' };
+        const FALLBACK_COLOR = '#E9EDF5';
         const XP_PER_PLAN = 25;
+        const MOTION_OK = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         let selectedMode = 'planner';
         let isGenerating = false;
@@ -559,7 +1075,7 @@
         }
 
         function renderStats() {
-            document.getElementById('stat-streak').textContent = `${streak} ${streak === 1 ? 'Day' : 'Days'}`;
+            document.getElementById('stat-streak').textContent = `${streak}-day streak`;
             document.getElementById('stat-points').textContent = `${points} XP`;
         }
 
@@ -578,29 +1094,26 @@
 
         // ---------- navigation ----------
         function showView(name) {
+            document.body.dataset.view = name;
             ['home', 'demo', 'calendar'].forEach(view => {
                 document.getElementById(`view-${view}`).classList.toggle('hidden', view !== name);
             });
-            closeSidebarDropdown();
+            document.querySelectorAll('[data-view]').forEach(tab => {
+                if (tab.dataset.view === name) tab.setAttribute('aria-current', 'page');
+                else tab.removeAttribute('aria-current');
+            });
             window.scrollTo({ top: 0 });
         }
 
-        function navigateToHome() { showView('home'); }
+        function navigateToHome() {
+            showView('home');
+            measureHeroBlocks();
+            updateHomeScroll();
+        }
         function navigateToDemo() { showView('demo'); }
         function navigateToCalendar() {
             showView('calendar');
-            renderCalendar();
-        }
-
-        function toggleSidebarDropdown() {
-            const dropdown = document.getElementById('sidebar-features-dropdown');
-            const isOpen = dropdown.classList.toggle('hidden') === false;
-            document.getElementById('dropdown-trigger-btn').setAttribute('aria-expanded', String(isOpen));
-        }
-
-        function closeSidebarDropdown() {
-            document.getElementById('sidebar-features-dropdown').classList.add('hidden');
-            document.getElementById('dropdown-trigger-btn').setAttribute('aria-expanded', 'false');
+            renderCalendar('open');
         }
 
         function selectEngineMode(targetMode) {
@@ -611,49 +1124,30 @@
         function changeMode(targetMode) {
             if (!MODES.includes(targetMode)) return;
             selectedMode = targetMode;
-            const color = MODE_COLORS[targetMode];
 
             document.querySelectorAll('.mode-view').forEach(el => el.classList.add('hidden'));
             document.getElementById(`wrapper-${targetMode}`).classList.remove('hidden');
-            document.getElementById('dropdown-active-label').textContent = MODE_LABELS[targetMode];
 
-            // Sidebar dropdown items
-            document.querySelectorAll('[data-mode-item]').forEach(el => {
-                const active = el.dataset.modeItem === targetMode;
-                el.style.borderColor = active ? MODE_COLORS[el.dataset.modeItem] : 'transparent';
-                el.classList.remove(...Object.values(MODE_TEXT_CLASSES), 'text-zinc-400');
-                el.classList.add(active ? MODE_TEXT_CLASSES[el.dataset.modeItem] : 'text-zinc-400');
-            });
-
-            // Workspace tabs (visible on every screen size)
             document.querySelectorAll('[data-mode-tab]').forEach(el => {
-                const active = el.dataset.modeTab === targetMode;
-                el.setAttribute('aria-selected', String(active));
-                el.style.backgroundColor = active ? MODE_COLORS[el.dataset.modeTab] + '22' : 'transparent';
-                el.style.color = active ? MODE_COLORS[el.dataset.modeTab] : '#a1a1aa';
+                el.setAttribute('aria-selected', String(el.dataset.modeTab === targetMode));
             });
-
-            closeSidebarDropdown();
         }
 
         function setBadge(mode) {
             const badge = document.getElementById('badge-indicator');
-            badge.style.backgroundColor = MODE_COLORS[mode] + '22';
-            badge.style.borderColor = MODE_COLORS[mode] + '33';
-            badge.style.color = MODE_COLORS[mode];
+            badge.style.backgroundColor = MODE_COLORS[mode];
             badge.textContent = MODE_LABELS[mode];
         }
 
         // ---------- notices (always textContent, never raw HTML) ----------
         function makeNotice(kind, text, link) {
             const div = document.createElement('div');
-            div.className = `mt-4 p-4 border text-xs rounded-xl font-semibold ${NOTICE_STYLES[kind]}`;
+            div.className = `notice notice-${kind}`;
             div.textContent = text;
             if (link) {
                 const a = document.createElement('a');
                 a.href = link.href;
                 a.textContent = link.label;
-                a.className = 'underline ml-1';
                 if (link.external) {
                     a.target = '_blank';
                     a.rel = 'noopener noreferrer';
@@ -671,9 +1165,9 @@
 
         function makeLoader(text) {
             const div = document.createElement('div');
-            div.className = 'flex items-center gap-3 py-4 text-zinc-500 text-sm';
+            div.className = 'loader';
             const spinner = document.createElement('span');
-            spinner.className = 'animate-spin rounded-full h-4 w-4 border-2 border-zinc-700 border-t-cyan-400';
+            spinner.className = 'spinner';
             div.append(spinner, document.createTextNode(text));
             return div;
         }
@@ -684,23 +1178,21 @@
             const today = localDateStr();
 
             if (mode === 'planner') {
-                const payload = { exam_date: val('input-date-planner'), subjects: val('input-sub-planner') };
-                if (!payload.exam_date) return [null, 'Pick your exam start date.'];
+                const payload = { exam_date: val('input-date-planner'), subjects: collectSubjects() };
+                if (!payload.exam_date) return [null, 'Pick your exam date.'];
                 if (payload.exam_date < today) return [null, "The exam date can't be in the past."];
-                if (!payload.subjects) return [null, 'List at least one subject with a confidence level, e.g. "Math: 2".'];
+                if (!payload.subjects) return [null, 'Name at least one subject, like "Math".'];
                 return [payload, null];
             }
             if (mode === 'milestone') {
-                const payload = {
-                    title: val('input-title-milestone'),
-                    requirements: val('input-req-milestone'),
-                    deadline: val('input-date-milestone'),
-                };
-                if (!payload.title) return [null, 'Give your project a name.'];
-                if (!payload.deadline) return [null, 'Pick the final deadline.'];
-                if (payload.deadline < today) return [null, "The deadline can't be in the past."];
-                if (!payload.requirements) return [null, 'Add the core requirements for the project.'];
-                return [payload, null];
+                const projects = collectProjects();
+                const nameOf = i => (projects.length === 1 ? 'your project' : `project ${i + 1}`);
+                for (let i = 0; i < projects.length; i++) {
+                    if (!projects[i].title) return [null, `Give ${nameOf(i)} a name.`];
+                    if (!projects[i].deadline) return [null, `Pick a deadline for ${nameOf(i)}.`];
+                    if (projects[i].deadline < today) return [null, `The deadline for ${nameOf(i)} can't be in the past.`];
+                }
+                return [{ projects }, null];
             }
             const payload = {
                 tasks: val('input-tasks-booster'),
@@ -719,13 +1211,8 @@
         const EXAMPLES = {
             planner: () => ({
                 'input-date-planner': localDateStr(12),
-                'input-sub-planner': 'Algebra 2: 2\nAP US History: 4\nChemistry: 3',
             }),
-            milestone: () => ({
-                'input-title-milestone': 'AP Lang Research Essay',
-                'input-date-milestone': localDateStr(21),
-                'input-req-milestone': '1500 words, at least 4 credible sources, MLA format, one peer review draft',
-            }),
+            milestone: () => ({}),
             booster: () => ({
                 'input-tasks-booster': 'Finish chemistry lab report, study 30 Spanish vocab words, practice piano',
                 'input-hours-booster': '3',
@@ -746,12 +1233,514 @@
             Object.entries(EXAMPLES[selectedMode]()).forEach(([id, value]) => {
                 document.getElementById(id).value = value;
             });
+            updateDeadlineNote(document.getElementById('exam-card'));
+            updateTodayNote();
+            if (selectedMode === 'milestone') {
+                document.getElementById('project-cards').replaceChildren();
+                addProjectCard({ title: 'AP Lang Research Essay', deadline: localDateStr(21), requirements: '1500 words, at least 4 credible sources, MLA format, one peer review draft' });
+                addProjectCard({ title: 'Science Fair Poster', deadline: localDateStr(10) });
+            }
+            if (selectedMode === 'planner') {
+                document.getElementById('subject-rows').replaceChildren();
+                [
+                    ['Algebra 2', 2, 'Unit 4: quadratics, factoring, graphing parabolas'],
+                    ['AP US History', 4, 'Periods 5 and 6: Civil War through the Gilded Age'],
+                    ['Chemistry', 3, 'Chapters 7 and 8: balancing equations and stoichiometry'],
+                ].forEach(([name, level, topics]) => addSubjectRow({ name, level, topics }));
+            }
         }
 
         function setGenerating(active) {
             isGenerating = active;
-            document.getElementById('generate-btn').disabled = active;
-            document.getElementById('generate-btn-label').textContent = active ? 'Building your plan…' : 'Build My Plan';
+            const button = document.getElementById('generate-btn');
+            button.disabled = active;
+            button.textContent = active ? 'Building your plan…' : 'Build my plan';
+        }
+
+        // ---------- date picker: the browser's own popup can't be themed, so this replaces it everywhere ----------
+        const CALENDAR_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+        const picker = { el: null, field: null, month: null, focusIso: null };
+
+        // A date field acts like a date input to the rest of the page: .value holds YYYY-MM-DD, .min limits it, and choosing fires 'input'
+        function setupDateField(field) {
+            let current = '';
+            Object.defineProperty(field, 'value', {
+                get: () => current,
+                set: value => { current = value || ''; renderDateField(field); },
+            });
+            field.setAttribute('aria-haspopup', 'dialog');
+            field.addEventListener('click', () => {
+                if (picker.field === field) closeDatePicker();
+                else openDatePicker(field);
+            });
+            renderDateField(field);
+        }
+
+        function renderDateField(field) {
+            field.classList.toggle('empty', !field.value);
+            field.innerHTML = `<span class="date-field-text"></span>${CALENDAR_ICON}`;
+            field.firstElementChild.textContent = field.value
+                ? formatDay(field.value, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Pick a date';
+        }
+
+        function chooseDate(iso) {
+            const field = picker.field;
+            field.value = iso;
+            closeDatePicker(true);
+            field.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function openDatePicker(field) {
+            closeDatePicker();
+            picker.field = field;
+            picker.focusIso = field.value || (field.min && field.min > localDateStr() ? field.min : localDateStr());
+            picker.month = startOfMonth(picker.focusIso);
+            picker.el = document.createElement('div');
+            picker.el.className = 'picker';
+            picker.el.setAttribute('role', 'dialog');
+            picker.el.setAttribute('aria-label', 'Choose a date');
+            picker.el.addEventListener('keydown', onPickerKey);
+            document.body.append(picker.el);
+            renderDatePicker();
+
+            const box = field.getBoundingClientRect();
+            const width = picker.el.offsetWidth;
+            const height = picker.el.offsetHeight;
+            const left = Math.max(8, Math.min(box.left, document.documentElement.clientWidth - width - 8));
+            const opensUp = box.bottom + height + 8 > innerHeight && box.top > height + 8;
+            picker.el.style.left = `${left + scrollX}px`;
+            picker.el.style.top = `${(opensUp ? box.top - height - 6 : box.bottom + 6) + scrollY}px`;
+            focusPickerDay();
+            setTimeout(() => document.addEventListener('pointerdown', onPickerOutside));
+        }
+
+        function closeDatePicker(returnFocus) {
+            if (!picker.el) return;
+            const field = picker.field;
+            picker.el.remove();
+            picker.el = null;
+            picker.field = null;
+            document.removeEventListener('pointerdown', onPickerOutside);
+            if (returnFocus) field.focus();
+        }
+
+        function onPickerOutside(event) {
+            if (!picker.el || picker.el.contains(event.target) || picker.field.contains(event.target)) return;
+            closeDatePicker();
+        }
+
+        function focusPickerDay() {
+            const day = picker.el.querySelector(`[data-iso="${picker.focusIso}"]`);
+            if (day) day.focus();
+        }
+
+        function pickerShiftMonth(delta) {
+            picker.month = new Date(picker.month.getFullYear(), picker.month.getMonth() + delta, 1);
+            const first = isoDay(picker.month);
+            const min = picker.field.min || '';
+            picker.focusIso = first < min ? min : first;
+            renderDatePicker(delta > 0 ? 'next' : 'prev');
+        }
+
+        function makePickerButton(className, text, label, onClick) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = className;
+            button.textContent = text;
+            if (label) button.setAttribute('aria-label', label);
+            button.onclick = onClick;
+            return button;
+        }
+
+        function renderDatePicker(direction) {
+            const min = picker.field.min || '';
+            const today = localDateStr();
+            const head = document.createElement('div');
+            head.className = 'picker-head';
+            const previous = makePickerButton('picker-nav', '‹', 'Previous month', () => pickerShiftMonth(-1));
+            const lastOfPrevious = isoDay(new Date(picker.month.getFullYear(), picker.month.getMonth(), 0));
+            previous.disabled = Boolean(min) && lastOfPrevious < min;
+            const title = document.createElement('span');
+            title.className = 'picker-title';
+            title.setAttribute('aria-live', 'polite');
+            title.textContent = picker.month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+            head.append(previous, title, makePickerButton('picker-nav', '›', 'Next month', () => pickerShiftMonth(1)));
+
+            const weekdays = document.createElement('div');
+            weekdays.className = 'picker-days';
+            weekdays.setAttribute('aria-hidden', 'true');
+            ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(letter => {
+                const cell = document.createElement('span');
+                cell.textContent = letter;
+                weekdays.append(cell);
+            });
+
+            const grid = document.createElement('div');
+            grid.className = 'picker-grid' + (direction ? ` ${direction}` : '');
+            const first = new Date(picker.month);
+            first.setDate(1 - first.getDay());
+            for (let i = 0; i < 42; i++) {
+                const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + i);
+                const iso = isoDay(d);
+                const day = makePickerButton('picker-day', '', formatDay(iso, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }), () => chooseDate(iso));
+                const number = document.createElement('span');
+                number.textContent = d.getDate();
+                day.append(number);
+                day.dataset.iso = iso;
+                day.tabIndex = iso === picker.focusIso ? 0 : -1;
+                day.disabled = Boolean(min) && iso < min;
+                if (d.getMonth() !== picker.month.getMonth()) day.classList.add('outside');
+                if (iso === today) day.classList.add('today');
+                if (iso === picker.field.value) {
+                    day.classList.add('selected');
+                    day.setAttribute('aria-pressed', 'true');
+                }
+                grid.append(day);
+            }
+
+            const foot = document.createElement('div');
+            foot.className = 'picker-foot';
+            foot.append(
+                makePickerButton('link-btn', 'Clear', '', () => chooseDate('')),
+                makePickerButton('link-btn', 'Today', '', () => chooseDate(today)),
+            );
+            picker.el.replaceChildren(head, weekdays, grid, foot);
+        }
+
+        function onPickerKey(event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                closeDatePicker(true);
+                return;
+            }
+            const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+            const onDay = event.target.classList.contains('picker-day');
+            if (event.key === 'PageUp' || event.key === 'PageDown') {
+                event.preventDefault();
+                pickerShiftMonth(event.key === 'PageUp' ? -1 : 1);
+                focusPickerDay();
+                return;
+            }
+            if (!onDay || !(event.key in steps)) return;
+            event.preventDefault();
+            const next = parseDay(picker.focusIso);
+            next.setDate(next.getDate() + steps[event.key]);
+            const iso = isoDay(next);
+            if (picker.field.min && iso < picker.field.min) return;
+            picker.focusIso = iso;
+            const monthChanged = next.getMonth() !== picker.month.getMonth() || next.getFullYear() !== picker.month.getFullYear();
+            if (monthChanged) picker.month = startOfMonth(iso);
+            renderDatePicker(monthChanged ? (steps[event.key] > 0 ? 'next' : 'prev') : '');
+            focusPickerDay();
+        }
+
+        // ---------- today's plan: how much of the free time fits before the stop time ----------
+        function updateTodayNote() {
+            const box = document.getElementById('today-note');
+            const stop = document.getElementById('input-end-booster').value;
+            const hours = parseFloat(document.getElementById('input-hours-booster').value);
+            if (!stop) {
+                box.classList.add('hidden');
+                return;
+            }
+            const [nowH, nowM] = new Date().toTimeString().slice(0, 5).split(':').map(Number);
+            const [stopH, stopM] = stop.split(':').map(Number);
+            let minutesLeft = stopH * 60 + stopM - (nowH * 60 + nowM);
+            // Same rule as the server: a stop time before 5 AM counts as after midnight
+            if (minutesLeft <= 0 && stopH < 5) minutesLeft += 24 * 60;
+
+            const hourWord = n => `${n} ${n === 1 ? 'hour' : 'hours'}`;
+            let text;
+            let color;
+            if (minutesLeft < 30) {
+                text = "That stop time is too close. Pick a later one.";
+                color = '#FFB8D9';
+            } else {
+                const fits = Math.floor(minutesLeft / 15) / 4;
+                if (Number.isFinite(hours) && hours > fits) {
+                    text = `Only about ${fits} of your ${hourWord(hours)} fit before ${formatTime(stop)}. The plan will show what got cut.`;
+                    color = '#FFCBA4';
+                } else if (Number.isFinite(hours)) {
+                    text = `Your ${hourWord(hours)} fit before ${formatTime(stop)}. Nice.`;
+                    color = '#B5F2B0';
+                } else {
+                    text = `You've got about ${hourWord(fits)} before ${formatTime(stop)}.`;
+                    color = '#FFF27A';
+                }
+            }
+            const note = document.createElement('p');
+            note.textContent = text;
+            box.style.setProperty('--note-color', color);
+            box.replaceChildren(note);
+            box.classList.remove('hidden');
+        }
+
+        // ---------- exam plan: one confidence slider per subject ----------
+        const MAX_SUBJECTS = 12;
+        const CONFIDENCE_LEVELS = {
+            1: { note: 'What even is this class?', color: '#FFB8D9', strong: '#D42F3C' },
+            2: { note: "I've seen these words before.", color: '#FFCBA4', strong: '#D96A1D' },
+            3: { note: 'I get it until the test starts.', color: '#FFF27A', strong: '#B99A00' },
+            4: { note: 'I could explain it to a friend.', color: '#D6F5A8', strong: '#5C9E2E' },
+            5: { note: 'I could teach this class.', color: '#B5F2B0', strong: '#2E8B3D' },
+        };
+
+        function setSubjectLevel(row, level, animate) {
+            const { note, color, strong } = CONFIDENCE_LEVELS[level];
+            const slider = row.querySelector('.subject-slider');
+            const noteBox = row.querySelector('.subject-note');
+            slider.setAttribute('aria-valuetext', `${level} out of 5: ${note}`);
+            row.style.setProperty('--level-note', color);
+            row.style.setProperty('--level-strong', strong);
+            noteBox.querySelector('b').textContent = `${level}/5`;
+            noteBox.querySelector('span').textContent = note;
+            if (animate && MOTION_OK) {
+                noteBox.animate(
+                    [{ transform: 'rotate(-3deg) scale(.94)' }, { transform: 'rotate(-.5deg) scale(1)' }],
+                    { duration: 220, easing: 'cubic-bezier(.3, 1.6, .5, 1)' },
+                );
+            }
+        }
+
+        function addSubjectRow({ name = '', topics = '', level = 3, focus = false } = {}) {
+            const list = document.getElementById('subject-rows');
+            if (list.children.length >= MAX_SUBJECTS) return;
+
+            const row = document.createElement('li');
+            row.className = 'subject-row';
+            if (focus) row.classList.add('adding');
+
+            const nameWrap = document.createElement('label');
+            nameWrap.className = 'subject-name-wrap';
+            nameWrap.textContent = 'Subject';
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'subject-name';
+            nameInput.maxLength = 60;
+            nameInput.placeholder = list.children.length === 0 ? 'Math' : 'Another subject';
+            nameInput.value = name;
+            nameWrap.append(nameInput);
+
+            const topicsWrap = document.createElement('label');
+            topicsWrap.className = 'subject-topics-wrap';
+            topicsWrap.textContent = "What's on the test?";
+            const topicsInput = document.createElement('input');
+            topicsInput.type = 'text';
+            topicsInput.className = 'subject-topics';
+            topicsInput.maxLength = 200;
+            topicsInput.placeholder = 'Units or chapters, like "Unit 4: quadratics and factoring"';
+            topicsInput.value = topics;
+            topicsWrap.append(topicsInput);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'subject-slider-wrap';
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.className = 'subject-slider';
+            slider.min = 1;
+            slider.max = 5;
+            slider.step = 1;
+            slider.value = level;
+            slider.setAttribute('aria-label', 'How confident you feel, from 1 to 5');
+            slider.addEventListener('input', () => setSubjectLevel(row, Number(slider.value), true));
+            const low = document.createElement('span');
+            low.textContent = '1';
+            low.setAttribute('aria-hidden', 'true');
+            const high = document.createElement('span');
+            high.textContent = '5';
+            high.setAttribute('aria-hidden', 'true');
+            wrap.append(low, slider, high);
+
+            const noteBox = document.createElement('div');
+            noteBox.className = 'subject-note';
+            noteBox.append(document.createElement('b'), document.createElement('span'));
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'subject-remove';
+            remove.textContent = '×';
+            remove.setAttribute('aria-label', 'Remove this subject');
+            remove.onclick = () => {
+                row.remove();
+                if (!list.children.length) addSubjectRow();
+                updateAddSubjectButton();
+            };
+
+            row.append(nameWrap, topicsWrap, wrap, noteBox, remove);
+            list.append(row);
+            setSubjectLevel(row, level, false);
+            updateAddSubjectButton();
+            if (focus) nameInput.focus();
+        }
+
+        function updateAddSubjectButton() {
+            document.getElementById('add-subject-btn').classList.toggle('hidden',
+                document.getElementById('subject-rows').children.length >= MAX_SUBJECTS);
+        }
+
+        // Rows with no name are skipped
+        function collectSubjects() {
+            return [...document.querySelectorAll('.subject-row')]
+                .map(row => ({
+                    name: row.querySelector('.subject-name').value.trim(),
+                    topics: row.querySelector('.subject-topics').value.trim(),
+                    level: row.querySelector('.subject-slider').value,
+                }))
+                .filter(subject => subject.name)
+                .map(({ name, topics, level }) => `${name}: confidence ${level}. On the test: ${topics || 'not given'}`)
+                .join('\n');
+        }
+
+        // ---------- project plan: one index card per project ----------
+        const MAX_PROJECTS = 5;
+        const CARD_COLORS = ['#FFB8D9', '#9FD8FF', '#FFF27A', '#B5F2B0', '#FFB39E'];
+        const CARD_TILTS = ['-.7deg', '.6deg', '-.4deg', '.8deg', '-.6deg'];
+
+        function deadlineMessage(days) {
+            if (days <= 0) return { text: "It's due today. Deep breath.", color: '#FFB8D9' };
+            if (days === 1) return { text: "It's due tomorrow. Tonight's the night.", color: '#FFB8D9' };
+            if (days <= 7) return { text: `${days} days left. That's soon. Start this week.`, color: '#FFCBA4' };
+            if (days <= 30) return { text: `${days} days left. Doable if you start now.`, color: '#FFF27A' };
+            return { text: `${days} days left. Plenty of time, until there isn't.`, color: '#B5F2B0' };
+        }
+
+        function updateDeadlineNote(card) {
+            const box = card.querySelector('.deadline-note');
+            const value = card.querySelector('.project-deadline').value;
+            const today = localDateStr();
+            if (!value || value < today) {
+                box.classList.add('hidden');
+                box.replaceChildren();
+                return;
+            }
+            const days = Math.round((parseDay(value) - parseDay(today)) / 86400000);
+            const { text, color } = deadlineMessage(days);
+            box.classList.remove('hidden');
+            box.style.setProperty('--note-color', color);
+
+            const note = document.createElement('p');
+            note.textContent = text;
+            // A little path out to the deadline: longer waits get more dots. It's a picture, not the plan's real checkpoints.
+            const path = document.createElement('div');
+            path.className = 'check-path';
+            path.setAttribute('aria-hidden', 'true');
+            const start = document.createElement('span');
+            start.textContent = 'Today';
+            const line = document.createElement('div');
+            line.className = 'check-line';
+            const dots = Math.min(7, Math.max(2, Math.ceil(days / 5) + 1));
+            for (let i = 0; i < dots; i++) {
+                const dot = document.createElement('span');
+                dot.className = 'check-dot';
+                dot.style.setProperty('--i', i);
+                line.append(dot);
+            }
+            const end = document.createElement('span');
+            end.textContent = formatDay(value, { month: 'short', day: 'numeric' });
+            path.append(start, line, end);
+            box.replaceChildren(note, path);
+        }
+
+        function updateRequirementsButton(card, animate) {
+            const button = card.querySelector('.req-add');
+            const open = !card.querySelector('.req-box').classList.contains('hidden');
+            const hasName = card.querySelector('.project-name').value.trim() !== '';
+            const show = hasName && !open;
+            if (show && button.classList.contains('hidden') && animate) {
+                button.classList.remove('popping');
+                void button.offsetWidth;
+                button.classList.add('popping');
+            }
+            button.classList.toggle('hidden', !show);
+        }
+
+        function renumberProjectCards() {
+            const cards = [...document.querySelectorAll('#project-cards .project-card')];
+            cards.forEach((card, i) => {
+                card.style.setProperty('--card-color', CARD_COLORS[i % CARD_COLORS.length]);
+                card.style.setProperty('--tilt', CARD_TILTS[i % CARD_TILTS.length]);
+                card.querySelector('.project-head b').textContent = `Project ${i + 1}`;
+                card.querySelector('.project-remove').setAttribute('aria-label', `Remove project ${i + 1}`);
+            });
+            document.getElementById('add-project-btn').classList.toggle('hidden', cards.length >= MAX_PROJECTS);
+        }
+
+        function addProjectCard({ title = '', deadline = '', requirements = '', focus = false } = {}) {
+            const list = document.getElementById('project-cards');
+            if (list.children.length >= MAX_PROJECTS) return;
+            const uid = newId();
+
+            const card = document.createElement('li');
+            card.className = 'project-card' + (focus ? ' dealt' : '');
+            card.innerHTML = `
+                <div class="project-head"><b></b><button type="button" class="project-remove">×</button></div>
+                <div class="project-body">
+                    <div>
+                        <label for="name-${uid}">Project name</label>
+                        <input type="text" class="project-name" id="name-${uid}" maxlength="200" placeholder="AP History Research Paper">
+                    </div>
+                    <div>
+                        <label for="due-${uid}">Final deadline</label>
+                        <button type="button" class="date-field project-deadline" id="due-${uid}"></button>
+                    </div>
+                    <div class="deadline-note project-wide hidden"></div>
+                    <button type="button" class="btn btn-secondary btn-small req-add project-wide hidden">Add requirements</button>
+                    <div class="req-box project-wide hidden">
+                        <div class="req-box-head">
+                            <label for="req-${uid}">Requirements</label>
+                            <button type="button" class="link-btn req-remove">Remove requirements</button>
+                        </div>
+                        <textarea class="project-req" id="req-${uid}" rows="3" maxlength="2000" placeholder="Minimum 4 sources, MLA guidelines, 1500 words"></textarea>
+                    </div>
+                </div>`;
+
+            const name = card.querySelector('.project-name');
+            const due = card.querySelector('.project-deadline');
+            setupDateField(due);
+            const reqBox = card.querySelector('.req-box');
+            const reqInput = card.querySelector('.project-req');
+            name.value = title;
+            due.min = localDateStr();
+            due.value = deadline;
+            reqInput.value = requirements;
+            reqBox.classList.toggle('hidden', !requirements);
+
+            name.addEventListener('input', () => updateRequirementsButton(card, true));
+            due.addEventListener('input', () => updateDeadlineNote(card));
+            card.querySelector('.req-add').addEventListener('click', () => {
+                reqBox.classList.remove('hidden');
+                updateRequirementsButton(card, false);
+                reqInput.focus();
+            });
+            card.querySelector('.req-remove').addEventListener('click', () => {
+                reqBox.classList.add('hidden');
+                reqInput.value = '';
+                updateRequirementsButton(card, false);
+                card.querySelector('.req-add').focus();
+            });
+            card.querySelector('.project-remove').addEventListener('click', () => {
+                card.classList.add('leaving');
+                setTimeout(() => {
+                    card.remove();
+                    if (!list.children.length) addProjectCard();
+                    renumberProjectCards();
+                }, MOTION_OK ? 180 : 0);
+            });
+
+            list.append(card);
+            renumberProjectCards();
+            updateRequirementsButton(card, false);
+            updateDeadlineNote(card);
+            if (focus) name.focus();
+        }
+
+        function collectProjects() {
+            return [...document.querySelectorAll('#project-cards .project-card')].map(card => ({
+                title: card.querySelector('.project-name').value.trim(),
+                deadline: card.querySelector('.project-deadline').value,
+                requirements: card.querySelector('.project-req').value.trim(),
+            }));
         }
 
         // ---------- AI generation ----------
@@ -774,7 +1763,7 @@
 
             setGenerating(true);
             hidePlanActions();
-            target.replaceChildren(makeLoader('Building your plan… this usually takes 5–15 seconds.'));
+            target.replaceChildren(makeLoader('Building your plan. This usually takes 5–15 seconds.'));
 
             try {
                 const response = await fetch('/api/generate', {
@@ -785,7 +1774,7 @@
                 const data = await response.json().catch(() => ({}));
 
                 if (!response.ok || data.error || typeof data.result !== 'string') {
-                    target.replaceChildren(makeNotice('error', data.error || `Something went wrong (HTTP ${response.status}). Please try again.`));
+                    target.replaceChildren(makeNotice('error', data.error || `Something went wrong (HTTP ${response.status}). Try again.`));
                     return;
                 }
 
@@ -795,7 +1784,7 @@
                 recordPlanCreated();
                 showPlanActions(data.can_sync);
             } catch {
-                target.replaceChildren(makeNotice('error', 'Could not reach the server. Check your connection and try again.'));
+                target.replaceChildren(makeNotice('error', "Couldn't reach the server. Check your connection and try again."));
             } finally {
                 setGenerating(false);
             }
@@ -816,8 +1805,7 @@
             if (!lastPlan) return;
 
             const target = document.getElementById('plan-actions-status');
-            const loader = makeLoader('Adding this plan to your Google Calendar…');
-            target.replaceChildren(loader);
+            target.replaceChildren(makeLoader('Adding this plan to your Google Calendar…'));
 
             let notice;
             try {
@@ -837,14 +1825,14 @@
                     const link = typeof data.link === 'string' && data.link.startsWith('https://')
                         ? { href: data.link, label: 'Open in Google Calendar', external: true }
                         : null;
-                    notice = makeNotice('success', `📅 ${data.message}`, link);
+                    notice = makeNotice('success', data.message, link);
                 } else if (data.reauth) {
                     notice = makeNotice('error', data.error, { href: '/login', label: 'Sign in again' });
                 } else {
                     notice = makeNotice('error', `Calendar sync failed: ${data.error || `HTTP ${response.status}`}`);
                 }
             } catch {
-                notice = makeNotice('error', 'Could not reach the server while syncing. Please try again.');
+                notice = makeNotice('error', "Couldn't reach the server while syncing. Try again.");
             }
 
             target.replaceChildren(notice);
@@ -857,7 +1845,7 @@
             document.getElementById('google-sync-btn').classList.toggle('hidden', !canSync);
             const saveBtn = document.getElementById('save-local-btn');
             saveBtn.disabled = false;
-            saveBtn.textContent = '📅 Add to My Calendar';
+            saveBtn.textContent = 'Add to my calendar';
         }
 
         function hidePlanActions() {
@@ -878,7 +1866,7 @@
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !Array.isArray(data.events)) {
-                throw new Error(data.error || `Something went wrong (HTTP ${response.status}). Please try again.`);
+                throw new Error(data.error || `Something went wrong (HTTP ${response.status}). Try again.`);
             }
             lastPlan.events = data.events;
             return data.events;
@@ -892,20 +1880,20 @@
             try {
                 action(await ensurePlanEvents());
             } catch (error) {
-                setPlanStatus(makeNotice('error', error.message || 'Could not reach the server. Please try again.'));
+                setPlanStatus(makeNotice('error', error.message || "Couldn't reach the server. Try again."));
             } finally {
                 buttons.forEach(b => { b.disabled = false; });
                 if (lastPlan.savedId) {
                     buttons[0].disabled = true;
-                    buttons[0].textContent = '✓ Added to My Calendar';
+                    buttons[0].textContent = 'Added to my calendar';
                 }
             }
         }
 
         function planTitle(plan) {
-            if (plan.mode === 'milestone') return plan.payload.title;
+            if (plan.mode === 'milestone') return plan.payload.projects.map(p => p.title).join(', ');
             if (plan.mode === 'planner') return `Exam prep (exam ${formatDay(plan.payload.exam_date, { month: 'short', day: 'numeric' })})`;
-            return `Daily Booster · ${formatDay(localDateStr(), { month: 'short', day: 'numeric' })}`;
+            return `Today's plan, ${formatDay(localDateStr(), { month: 'short', day: 'numeric' })}`;
         }
 
         function savePlanToCalendar() {
@@ -916,14 +1904,14 @@
                 cal.plans.push({ id: planId, mode: lastPlan.mode, title: planTitle(lastPlan), created: localDateStr() });
                 events.forEach(e => cal.events.push({ ...e, id: newId(), planId, done: false }));
                 if (!saveCalendar(cal)) {
-                    setPlanStatus(makeNotice('error', "This browser won't let the site save data (private mode?). Use the .ics download instead."));
+                    setPlanStatus(makeNotice('error', "This browser won't let the site save data, which can happen in private mode. Use the .ics download instead."));
                     return;
                 }
                 lastPlan.savedId = planId;
                 calView.month = startOfMonth(events[0].date);
                 calView.selected = events[0].date;
-                setPlanStatus(makeNotice('success', `📅 Added ${events.length} ${events.length === 1 ? 'event' : 'events'} to your calendar.`,
-                    { href: '#', label: 'Open My Calendar', onClick: navigateToCalendar }));
+                setPlanStatus(makeNotice('success', `Added ${events.length} ${events.length === 1 ? 'event' : 'events'} to your calendar.`,
+                    { href: '#', label: 'Open your calendar', onClick: navigateToCalendar }));
             });
         }
 
@@ -978,23 +1966,25 @@
 
         function shiftMonth(delta) {
             calView.month = new Date(calView.month.getFullYear(), calView.month.getMonth() + delta, 1);
-            renderCalendar();
+            renderCalendar(delta > 0 ? 'next' : 'prev');
         }
 
         function goToToday() {
             calView.month = startOfMonth(localDateStr());
             calView.selected = localDateStr();
-            renderCalendar();
+            renderCalendar('open');
         }
 
         function selectDay(iso) {
             calView.selected = iso;
-            renderCalendar();
+            renderCalendar('day');
         }
 
-        function renderCalendar() {
+        // fx: 'open', 'next', 'prev' or 'day' plays that motion; omitted on plain re-renders so ticking a box doesn't replay it
+        function renderCalendar(fx) {
             const cal = loadCalendar();
             const planMode = Object.fromEntries(cal.plans.map(p => [p.id, p.mode]));
+            const colorOf = e => MODE_COLORS[planMode[e.planId]] || FALLBACK_COLOR;
             const byDay = {};
             cal.events.forEach(e => { (byDay[e.date] = byDay[e.date] || []).push(e); });
             Object.values(byDay).forEach(list => list.sort((a, b) => (a.start || '').localeCompare(b.start || '')));
@@ -1005,7 +1995,6 @@
                 calView.month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
             // Month grid: always 6 rows starting on the Sunday before the 1st
-            const grid = document.getElementById('cal-grid');
             const first = new Date(calView.month);
             first.setDate(1 - first.getDay());
             const today = localDateStr();
@@ -1014,102 +2003,122 @@
                 const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + i);
                 const iso = isoDay(d);
                 const events = byDay[iso] || [];
-                const inMonth = d.getMonth() === calView.month.getMonth();
 
                 const cell = document.createElement('button');
                 cell.type = 'button';
                 cell.onclick = () => selectDay(iso);
                 cell.setAttribute('aria-label', `${formatDay(iso, { weekday: 'long', month: 'long', day: 'numeric' })}, ${events.length} ${events.length === 1 ? 'event' : 'events'}`);
-                if (iso === calView.selected) cell.setAttribute('aria-current', 'date');
-                cell.className = 'min-h-[3.25rem] md:min-h-[5.5rem] rounded-xl p-1.5 text-left flex flex-col gap-1 border transition ' +
-                    (iso === calView.selected ? 'border-cyan-500/70 bg-cyan-500/10 ' : 'border-transparent hover:bg-zinc-800/60 ') +
-                    (inMonth ? '' : 'opacity-40');
+                cell.setAttribute('aria-pressed', String(iso === calView.selected));
+                cell.className = 'cal-cell';
+                cell.style.setProperty('--d', (i % 7) + Math.floor(i / 7));
+                if (iso === calView.selected) cell.classList.add('selected');
+                if (iso === today) cell.classList.add('today');
+                if (d.getMonth() !== calView.month.getMonth()) cell.classList.add('outside');
 
                 const num = document.createElement('span');
+                num.className = 'cal-num';
                 num.textContent = d.getDate();
-                num.className = 'text-xs font-bold h-5 w-5 flex items-center justify-center rounded-full ' +
-                    (iso === today ? 'bg-cyan-500 text-zinc-950' : 'text-zinc-300');
                 cell.append(num);
 
                 if (events.length) {
-                    // Phones: coloured dots. Larger screens: the first two titles.
-                    const dots = document.createElement('span');
-                    dots.className = 'flex flex-wrap gap-0.5 md:hidden';
+                    // Phones: highlighter marks. Larger screens: the first two titles.
+                    const bars = document.createElement('span');
+                    bars.className = 'cal-bars';
                     events.slice(0, 4).forEach(e => {
-                        const dot = document.createElement('span');
-                        dot.className = 'h-1.5 w-1.5 rounded-full';
-                        dot.style.backgroundColor = MODE_COLORS[planMode[e.planId]] || '#a1a1aa';
-                        dots.append(dot);
+                        const bar = document.createElement('span');
+                        bar.className = 'cal-bar';
+                        bar.style.backgroundColor = colorOf(e);
+                        bars.append(bar);
                     });
                     const titles = document.createElement('span');
-                    titles.className = 'hidden md:flex flex-col gap-0.5 min-w-0';
+                    titles.className = 'cal-titles';
                     events.slice(0, 2).forEach(e => {
                         const t = document.createElement('span');
-                        t.className = 'truncate text-[10px] leading-tight px-1 py-0.5 rounded ' + (e.done ? 'line-through opacity-50' : '');
-                        t.style.color = MODE_COLORS[planMode[e.planId]] || '#a1a1aa';
-                        t.style.backgroundColor = (MODE_COLORS[planMode[e.planId]] || '#a1a1aa') + '18';
+                        t.className = 'cal-title' + (e.done ? ' done' : '');
+                        t.style.backgroundColor = colorOf(e);
                         t.textContent = e.title;
                         titles.append(t);
                     });
                     if (events.length > 2) {
                         const more = document.createElement('span');
-                        more.className = 'text-[10px] text-zinc-500 px-1';
-                        more.textContent = `+${events.length - 2} more`;
+                        more.className = 'cal-more';
+                        more.textContent = `${events.length - 2} more`;
                         titles.append(more);
                     }
-                    cell.append(dots, titles);
+                    cell.append(bars, titles);
                 }
                 cells.push(cell);
             }
+            const grid = document.getElementById('cal-grid');
             grid.replaceChildren(...cells);
+            grid.className = 'cal-grid' + (fx ? ` cal-fx-${fx}` : '');
+            // Restart the grid's slide when the same direction is clicked twice
+            if (fx) { grid.style.animation = 'none'; void grid.offsetWidth; grid.style.animation = ''; }
 
-            renderDayList(byDay[calView.selected] || [], planMode);
+            renderDayList(byDay[calView.selected] || [], colorOf, Boolean(fx));
             renderPlanList(cal);
         }
 
-        function renderDayList(events, planMode) {
+        function renderDayList(events, colorOf, animate) {
             document.getElementById('cal-day-title').textContent =
                 formatDay(calView.selected, { weekday: 'long', month: 'long', day: 'numeric' });
             const list = document.getElementById('cal-day-list');
+            list.classList.toggle('list-in', animate);
+            document.getElementById('cal-day-stamp').classList.toggle('hidden', !events.length || !events.every(e => e.done));
+            document.getElementById('cal-day-stamp').classList.remove('stamp-in');
             if (!events.length) {
                 const empty = document.createElement('li');
-                empty.className = 'text-xs text-zinc-500';
+                empty.className = 'empty-day';
                 empty.textContent = 'Nothing planned for this day.';
                 list.replaceChildren(empty);
                 return;
             }
-            list.replaceChildren(...events.map(e => {
+            list.replaceChildren(...events.map((e, index) => {
                 const li = document.createElement('li');
-                li.className = 'flex items-start gap-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5';
+                li.className = 'event';
+                li.dataset.eventId = e.id;
+                li.style.setProperty('--i', index);
 
                 const check = document.createElement('input');
                 check.type = 'checkbox';
                 check.checked = e.done;
-                check.className = 'mt-1 h-4 w-4 shrink-0 accent-cyan-500 cursor-pointer';
                 check.setAttribute('aria-label', `Mark "${e.title}" as done`);
-                check.onchange = () => updateEvent(e.id, ev => { ev.done = check.checked; });
+                check.onchange = () => {
+                    const nowDone = check.checked;
+                    const wasDayDone = events.every(ev => ev.done);
+                    updateEvent(e.id, ev => { ev.done = nowDone; });
+                    if (!nowDone) return;
+                    const row = document.querySelector(`[data-event-id="${e.id}"]`);
+                    if (row) {
+                        row.classList.add('just-done-row');
+                        row.querySelector('.event-title').classList.add('just-done');
+                    }
+                    const stamp = document.getElementById('cal-day-stamp');
+                    if (!wasDayDone && !stamp.classList.contains('hidden')) stamp.classList.add('stamp-in');
+                };
 
                 const body = document.createElement('div');
-                body.className = 'flex-1 min-w-0';
+                body.className = 'event-body';
                 const time = document.createElement('span');
-                time.className = 'block text-[11px] font-semibold';
-                time.style.color = MODE_COLORS[planMode[e.planId]] || '#a1a1aa';
+                time.className = 'event-time';
+                time.style.backgroundColor = colorOf(e);
                 time.textContent = e.start ? (e.end ? `${formatTime(e.start)} – ${formatTime(e.end)}` : formatTime(e.start)) : 'Any time';
                 const title = document.createElement('span');
-                title.className = 'block text-sm break-words ' + (e.done ? 'line-through text-zinc-500' : 'text-zinc-200');
+                title.className = 'event-title' + (e.done ? ' done' : '');
                 title.textContent = e.title;
                 body.append(time, title);
 
                 const remove = document.createElement('button');
                 remove.type = 'button';
-                remove.className = 'text-zinc-500 hover:text-red-400 text-lg leading-none px-1 transition';
+                remove.className = 'event-remove';
                 remove.textContent = '×';
                 remove.setAttribute('aria-label', `Remove "${e.title}"`);
                 remove.onclick = () => {
                     const cal = loadCalendar();
                     cal.events = cal.events.filter(ev => ev.id !== e.id);
                     saveCalendar(cal);
-                    renderCalendar();
+                    li.classList.add('leaving');
+                    setTimeout(() => renderCalendar(), MOTION_OK ? 180 : 0);
                 };
 
                 li.append(check, body, remove);
@@ -1122,41 +2131,42 @@
             document.getElementById('cal-plan-list').replaceChildren(...cal.plans.slice().reverse().map(plan => {
                 const events = cal.events.filter(e => e.planId === plan.id).sort((a, b) => a.date.localeCompare(b.date));
                 const li = document.createElement('li');
-                li.className = 'flex flex-wrap items-center gap-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl px-3 py-2.5';
+                li.className = 'plan-row';
 
                 const info = document.createElement('button');
                 info.type = 'button';
-                info.className = 'flex-1 min-w-[10rem] text-left';
+                info.className = 'plan-row-info';
                 info.onclick = () => {
                     if (!events.length) return;
                     calView.month = startOfMonth(events[0].date);
                     calView.selected = events[0].date;
-                    renderCalendar();
+                    renderCalendar('open');
                 };
                 const name = document.createElement('span');
-                name.className = 'block text-sm font-semibold break-words';
-                name.style.color = MODE_COLORS[plan.mode];
+                name.className = 'plan-row-name';
+                name.style.backgroundColor = MODE_COLORS[plan.mode] || FALLBACK_COLOR;
                 name.textContent = plan.title;
                 const meta = document.createElement('span');
-                meta.className = 'block text-[11px] text-zinc-500';
+                meta.className = 'plan-row-meta';
                 const done = events.filter(e => e.done).length;
                 meta.textContent = events.length
-                    ? `${MODE_LABELS[plan.mode]} · ${done}/${events.length} done · ${formatDay(events[0].date, { month: 'short', day: 'numeric' })} – ${formatDay(events[events.length - 1].date, { month: 'short', day: 'numeric' })}`
-                    : `${MODE_LABELS[plan.mode]} · no events left`;
+                    ? `${MODE_LABELS[plan.mode]}, ${done} of ${events.length} done, ${formatDay(events[0].date, { month: 'short', day: 'numeric' })} to ${formatDay(events[events.length - 1].date, { month: 'short', day: 'numeric' })}`
+                    : `${MODE_LABELS[plan.mode]}, no events left`;
                 info.append(name, meta);
 
                 const ics = document.createElement('button');
                 ics.type = 'button';
-                ics.className = 'text-[11px] font-semibold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg px-2.5 py-1.5 transition disabled:opacity-40';
-                ics.textContent = '⬇ .ics';
+                ics.className = 'btn btn-secondary btn-small';
+                ics.textContent = 'Download .ics';
                 ics.disabled = !events.length;
                 ics.setAttribute('aria-label', `Download "${plan.title}" as a calendar file`);
                 ics.onclick = () => downloadIcs(events.map(e => ({ ...e, mode: plan.mode })), 'scholarsync-plan.ics');
 
                 const remove = document.createElement('button');
                 remove.type = 'button';
-                remove.className = 'text-[11px] font-semibold text-red-400 hover:text-red-300 px-2 py-1.5 transition';
+                remove.className = 'plan-row-remove';
                 remove.textContent = 'Remove';
+                remove.setAttribute('aria-label', `Remove "${plan.title}"`);
                 remove.onclick = () => {
                     if (!confirm(`Remove "${plan.title}" and its ${events.length} events from your calendar?`)) return;
                     const fresh = loadCalendar();
@@ -1247,29 +2257,282 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        // ---------- global listeners & startup ----------
-        document.addEventListener('click', event => {
-            if (!document.getElementById('dropdown-wrapper').contains(event.target)) closeSidebarDropdown();
-        });
+        // ---------- hero: scrolling crosses out "only one exam", then the exam unfolds into a week (a sample, not an AI plan) ----------
+        const HERO_DAYS = ['Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
+        // Each level adds blocks to the one before, so scrolling back simply takes them away
+        const HERO_BLOCKS = [
+            { day: 'Fri', title: 'Practice test', minutes: 60, level: 'high' },
+            { day: 'Sun', title: 'Review mistakes', minutes: 45, level: 'high' },
+            { day: 'Wed', title: 'Read the chapter', minutes: 45, level: 'mid' },
+            { day: 'Thu', title: 'Practice problems', minutes: 60, level: 'mid' },
+            { day: 'Sat', title: 'Flashcards', minutes: 30, level: 'mid' },
+            { day: 'Sun', title: 'Flashcards', minutes: 30, level: 'mid' },
+            { day: 'Wed', title: 'Take notes', minutes: 45, level: 'low' },
+            { day: 'Thu', title: 'Take notes', minutes: 45, level: 'low' },
+            { day: 'Fri', title: 'More problems', minutes: 45, level: 'low' },
+            { day: 'Sat', title: 'Go over answers', minutes: 45, level: 'low' },
+            { day: 'Sun', title: 'Timed problems', minutes: 60, level: 'low' },
+        ];
+        // Where each stretch of the scroll starts and ends, as a share of the pinned track
+        const HERO_STRIKE = [0.01, 0.15];
+        const HERO_LEVELS = { high: [0.19, 0.33], mid: [0.37, 0.55], low: [0.59, 0.77] };
+        const HERO_LAST_LINE = 0.8;
+        let heroPinned = false;
+        let heroScrollFrame = 0;
+        let dayStripTouched = false;
 
+        const clamp01 = n => Math.min(1, Math.max(0, n));
+
+        function makeHeroMark(className, title, note) {
+            const mark = document.createElement('div');
+            mark.className = `mark ${className}`;
+            mark.textContent = title;
+            if (note) {
+                const small = document.createElement('small');
+                small.textContent = note;
+                mark.append(small);
+            }
+            return mark;
+        }
+
+        function setupHeroWeek() {
+            const host = document.getElementById('hero-week');
+            const columns = HERO_DAYS.map(day => {
+                const column = document.createElement('div');
+                column.className = 'week-day';
+                const name = document.createElement('div');
+                name.className = 'week-name';
+                name.textContent = day;
+                const tasks = document.createElement('div');
+                tasks.className = 'week-tasks';
+                if (day === 'Sat') tasks.append(makeHeroMark('mark-plans', 'Plans with friends'));
+                HERO_BLOCKS.filter(block => block.day === day).forEach(block => {
+                    block.el = makeHeroMark(`block-${block.level}`, block.title, `${block.minutes} min`);
+                    tasks.append(block.el);
+                });
+                if (day === 'Mon') tasks.append(makeHeroMark('mark-exam', 'Chemistry exam', 'Sample week'));
+                column.append(name, tasks);
+                return column;
+            });
+            host.replaceChildren(...columns);
+
+            applyHeroPin();
+            Object.entries(HERO_LEVELS).forEach(([level, [start, end]]) => {
+                const blocks = HERO_BLOCKS.filter(block => block.level === level);
+                blocks.forEach((block, i) => {
+                    block.start = start + ((end - start) * i) / blocks.length;
+                    block.end = block.start + (end - start) / blocks.length + 0.02;
+                });
+            });
+
+            if (MOTION_OK) {
+                const title = document.getElementById('hero-struck');
+                title.replaceChildren(...title.textContent.split(' ').flatMap((word, i, all) => {
+                    const span = document.createElement('span');
+                    span.className = 'hero-title-word';
+                    span.style.setProperty('--i', i);
+                    span.textContent = word;
+                    return i < all.length - 1 ? [span, ' '] : [span];
+                }));
+                const story = document.getElementById('story');
+                story.replaceChildren(...story.textContent.split(' ').flatMap(word => {
+                    const span = document.createElement('span');
+                    span.className = 'story-word';
+                    span.textContent = word;
+                    return [span, ' '];
+                }));
+            }
+            measureHeroBlocks();
+            addEventListener('scroll', requestHomeScrollUpdate, { passive: true });
+            addEventListener('resize', () => { applyHeroPin(); measureHeroBlocks(); requestHomeScrollUpdate(); });
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measureHeroBlocks(); updateHomeScroll(); });
+            updateHomeScroll();
+        }
+
+        // Reduced motion, or a window too short to fit the stage, gets the finished week with nothing pinned
+        function applyHeroPin() {
+            const track = document.getElementById('hero-track');
+            heroPinned = MOTION_OK;
+            track.classList.toggle('pinned', heroPinned);
+            if (heroPinned && track.firstElementChild.scrollHeight > innerHeight) {
+                heroPinned = false;
+                track.classList.remove('pinned');
+            }
+        }
+
+        // Each block's distance from the exam chip, which is where it flies out of
+        function measureHeroBlocks() {
+            const exam = document.querySelector('#hero-week .mark-exam');
+            if (!exam || !exam.offsetWidth) return;
+            HERO_BLOCKS.forEach(block => { block.el.style.transform = 'none'; });
+            const origin = exam.getBoundingClientRect();
+            HERO_BLOCKS.forEach(block => {
+                const box = block.el.getBoundingClientRect();
+                block.dx = origin.left + origin.width / 2 - (box.left + box.width / 2);
+                block.dy = origin.top + origin.height / 2 - (box.top + box.height / 2);
+            });
+        }
+
+        function requestHomeScrollUpdate() {
+            cancelAnimationFrame(heroScrollFrame);
+            heroScrollFrame = requestAnimationFrame(updateHomeScroll);
+        }
+
+        function updateHomeScroll() {
+            if (document.getElementById('view-home').classList.contains('hidden')) return;
+            updateHeroScroll();
+            if (!MOTION_OK) return;
+            const vh = innerHeight;
+
+            // The story lights up word by word as it rises through the screen
+            const story = document.getElementById('story');
+            const storyTop = story.getBoundingClientRect().top;
+            const storyShown = clamp01((vh * 0.85 - storyTop) / (vh * 0.5));
+            const words = story.querySelectorAll('.story-word');
+            words.forEach((word, i) => {
+                word.style.opacity = 0.2 + 0.8 * clamp01(storyShown * words.length - i + 1);
+            });
+
+            // The stop-time slider sweeps on its own until someone grabs it
+            if (!dayStripTouched) {
+                const slider = document.getElementById('day-slider');
+                const top = document.getElementById('day-strip').getBoundingClientRect().top;
+                const swept = clamp01((vh * 0.85 - top) / (vh * 0.55));
+                const min = Number(slider.min);
+                const max = Number(slider.max);
+                slider.value = min + Math.round(((max - min) * swept) / 15) * 15;
+                updateDayStrip();
+            }
+        }
+
+        function updateHeroScroll() {
+            let p = 1;
+            if (heroPinned) {
+                const track = document.getElementById('hero-track').getBoundingClientRect();
+                const startOffset = track.top + scrollY;
+                p = clamp01(scrollY / (track.height - innerHeight + startOffset));
+            }
+
+            document.getElementById('hero-struck').style.setProperty('--strike', heroPinned ? clamp01((p - HERO_STRIKE[0]) / (HERO_STRIKE[1] - HERO_STRIKE[0])) : 0);
+
+            let minutes = 0;
+            HERO_BLOCKS.forEach(block => {
+                const t = heroPinned ? clamp01((p - block.start) / (block.end - block.start)) : 1;
+                minutes += block.minutes * t;
+                const eased = 1 - (1 - t) ** 3;
+                block.el.style.opacity = clamp01(t * 3);
+                block.el.style.transform = t === 1
+                    ? 'none'
+                    : `translate(${(block.dx || 0) * (1 - eased)}px, ${(block.dy || 0) * (1 - eased)}px) scale(${0.35 + 0.65 * eased}) rotate(${-6 * (1 - eased)}deg)`;
+            });
+            const hours = Math.round((minutes / 60) * 4) / 4;
+            document.getElementById('hero-hours').textContent = `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+
+            const line = p < HERO_STRIKE[1] ? 0 : p < HERO_LAST_LINE ? 1 : 2;
+            [0, 1, 2].forEach(i => document.getElementById(`hero-line-${i}`).classList.toggle('on', i === line));
+
+            const level = p >= HERO_LEVELS.low[0] ? 'low' : p >= HERO_LEVELS.mid[0] ? 'mid' : p >= HERO_LEVELS.high[0] ? 'high' : '';
+            document.getElementById('hero-levels').classList.toggle('off', !level);
+            document.querySelectorAll('[data-level]').forEach(el => el.classList.toggle('on', el.dataset.level === level));
+            document.getElementById('scroll-cue').classList.toggle('off', !heroPinned || p > 0.9);
+        }
+
+        // ---------- "how it's built" section: worked sums, day strip and scroll animations ----------
+        const STRIP_START = 15 * 60;
+        const STRIP_MINUTES = 5 * 60;
+        const STUDY_START = 16 * 60 + 15;
+        const DAY_TASKS = [
+            { name: 'Chem lab report', minutes: 60, color: MODE_COLORS.planner },
+            { name: 'Spanish vocab', minutes: 45, color: MODE_COLORS.milestone },
+            { name: 'Piano', minutes: 45, color: MODE_COLORS.booster },
+        ];
+
+        function stripPercent(minutes) { return ((minutes - STRIP_START) / STRIP_MINUTES) * 100; }
+
+        function clockFromMinutes(minutes) {
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+        }
+
+        function setupSums() {
+            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+            document.getElementById('sum-today').textContent = formatDay(localDateStr(), options);
+            document.getElementById('sum-exam').textContent = formatDay(localDateStr(12), options);
+        }
+
+        function setupDayStrip() {
+            const strip = document.getElementById('day-strip');
+            let start = STUDY_START;
+            DAY_TASKS.forEach((task, i) => {
+                task.end = start + task.minutes;
+                const block = document.createElement('div');
+                block.className = 'day-block';
+                block.textContent = task.name;
+                block.style.left = `${stripPercent(start)}%`;
+                block.style.width = `${(task.minutes / STRIP_MINUTES) * 100 - 0.6}%`;
+                block.style.backgroundColor = task.color;
+                block.style.animationDelay = `${0.1 + i * 0.3}s`;
+                strip.append(block);
+                task.block = block;
+                start = task.end;
+            });
+            document.getElementById('day-slider').addEventListener('input', () => {
+                dayStripTouched = true;
+                updateDayStrip();
+            });
+            updateDayStrip();
+        }
+
+        function updateDayStrip() {
+            const stop = Number(document.getElementById('day-slider').value);
+            document.getElementById('day-stop').style.left = `${stripPercent(stop)}%`;
+            document.getElementById('day-stop-label').textContent = formatTime(clockFromMinutes(stop));
+            const cut = DAY_TASKS.filter(task => task.end > stop);
+            DAY_TASKS.forEach(task => task.block.classList.toggle('cut', task.end > stop));
+            document.getElementById('day-result').textContent = cut.length
+                ? `Didn't fit today: ${cut.map(task => task.name).join(', ')}`
+                : 'Everything fits.';
+        }
+
+        function setupRevealAnimations() {
+            if (!MOTION_OK || !('IntersectionObserver' in window)) return;
+            document.documentElement.classList.add('can-animate');
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('in-view');
+                    observer.unobserve(entry.target);
+                });
+            }, { threshold: 0.35 });
+            document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+        }
+
+        // ---------- global listeners & startup ----------
         document.getElementById('sync-modal').addEventListener('click', event => {
             if (event.target.id === 'sync-modal') dismissSyncModal();
         });
 
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape') {
-                dismissSyncModal();
-                closeSidebarDropdown();
-            }
+            if (event.key === 'Escape') dismissSyncModal();
         });
+        addEventListener('resize', () => closeDatePicker());
 
-        ['input-date-planner', 'input-date-milestone'].forEach(id => {
-            document.getElementById(id).min = localDateStr();
-        });
+        const examDate = document.getElementById('input-date-planner');
+        setupDateField(examDate);
+        examDate.min = localDateStr();
+        examDate.addEventListener('input', () => updateDeadlineNote(document.getElementById('exam-card')));
 
         renderStats();
+        addSubjectRow();
+        addProjectCard();
+        updateTodayNote();
+        setupSums();
+        setupDayStrip();
+        setupHeroWeek();
+        setupRevealAnimations();
         changeMode('planner');
         if (location.hash === '#calendar') navigateToCalendar();
+        else navigateToHome();
     </script>
 </body>
 </html>

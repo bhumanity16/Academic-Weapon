@@ -122,11 +122,14 @@ def create_calendar_event(creds, mode, user_input, plan, today):
         summary = "ScholarSync: Exam Preparation Plan"
         event_date = user_input.get("exam_date")
     elif mode == "milestone":
-        title = str(user_input.get("title") or "Project").strip()[:150]
+        projects = user_input.get("projects")
+        projects = [p for p in projects if isinstance(p, dict)] if isinstance(projects, list) else [user_input]
+        title = ", ".join(str(p.get("title") or "Project").strip() for p in projects)[:150]
         summary = f"ScholarSync Project Deadline: {title}"
-        event_date = user_input.get("deadline")
+        # The event sits on the last deadline, since the plan runs up to it (ISO dates sort by date)
+        event_date = max((str(p.get("deadline") or "") for p in projects), default=None)
     else:
-        summary = "ScholarSync: Daily Booster Schedule"
+        summary = "ScholarSync: Today's Plan"
         event_date = None
 
     try:
